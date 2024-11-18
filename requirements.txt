@@ -1,3 +1,3 @@
-Flask==2.3.2
-pyngrok==5.1.0
-Werkzeug==2.3.5
+git add requirements.txt
+git commit -m "Добавлен gunicorn в зависимости"
+git push origin main
