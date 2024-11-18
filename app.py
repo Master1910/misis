@@ -11,7 +11,6 @@ app.secret_key = 'supersecretkey'
 DATABASE = os.path.join(os.getcwd(), "users.db")
 
 # --- Утилитарные функции ---
-
 def init_db():
     """Инициализация базы данных: создание файла и таблицы, если они отсутствуют."""
     if not os.path.exists(DATABASE):
