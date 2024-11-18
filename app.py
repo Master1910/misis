@@ -76,6 +76,27 @@ def register():
             return "Пользователь с таким именем уже существует.", 400
     return render_template('register.html')
 
+@app.route('/rules')
+def rules():
+    """Страница с правилами использования."""
+    return render_template('rules.html', title="Правила использования")
+
+
+@app.route('/how_it_works')
+def how_it_works():
+    """Страница 'Как это работает'."""
+    return render_template('how_it_works.html', title="Как это работает")
+
+@app.route('/how_it_built')
+def how_it_built():
+    """Страница 'Как это устроено'."""
+    return render_template('how_it_built.html', title="Как это устроено")
+
+@app.route('/find_matches')
+def find_matches():
+    """Страница 'Найти совпадения'."""
+    return render_template('find_matches.html', title="Найти совпадения")
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Страница входа пользователя."""
