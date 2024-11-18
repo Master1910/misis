@@ -5,10 +5,10 @@ import os
 
 # Создание приложения Flask
 app = Flask(__name__)
-app.secret_key = 'supersecretkey'
 
-# Путь к файлу базы данных
-DATABASE = os.path.join(os.getcwd(), "users.db")
+# Получение значений переменных среды
+app.secret_key = os.getenv('SECRET_KEY', 'supersecretkey')  # Значение по умолчанию
+DATABASE = os.getenv('DATABASE_URL', 'sqlite:///users.db').replace('sqlite:///', '')  # Убираем префикс
 
 # --- Утилитарные функции ---
 def init_db():
@@ -76,8 +76,24 @@ def how_it_built():
 def find_matches():
     return render_template('find_matches.html')
 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
 def login():
+    if request.method == 'POST':
+        name = request.form['name']
+        password = request.form['password']
+
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT password FROM users WHERE name = ?", (name,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user and check_password_hash(user[0], password):
+            session['username'] = name
+            return redirect(url_for('home'))
+        else:
+            return "Неверное имя пользователя или пароль.", 400
+
     return render_template('login.html')
 
 @app.route('/logout')
