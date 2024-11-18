@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 0; }
+        header { background-color: #007BFF; color: white; padding: 10px 20px; text-align: center; }
+        a { text-decoration: none; color: #007BFF; }
+        a:hover { color: #0056b3; }
+        h1, p { margin: 20px 0; }
+        .container { text-align: center; padding: 20px; }
+        footer { background-color: #333; color: white; padding: 10px; text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>{{ title }}</h1>
+    </header>
+    <div class="container">
+        <nav>
+            <a href="{{ url_for('home') }}">Главная</a> | 
+            <a href="{{ url_for('register') }}">Регистрация</a> | 
+            <a href="{{ url_for('login') }}">Вход</a> | 
+            <a href="{{ url_for('rules') }}">Правила</a> | 
+            <a href="{{ url_for('how_it_works') }}">Как работает</a> | 
+            <a href="{{ url_for('how_it_built') }}">Как устроен</a> | 
+            <a href="{{ url_for('find_matches') }}">Найти совпадения</a>
+            {% if username %}
+            | <a href="{{ url_for('logout') }}">Выход</a>
+            {% endif %}
+        </nav>
+        {% block content %}
+        {% endblock %}
+    </div>
+    <footer>
+        <p>Сайт Telegram-бота © 2024</p>
+    </footer>
+</body>
+</html>
