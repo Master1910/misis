@@ -5,14 +5,13 @@ import os
 
 # Создание приложения Flask
 app = Flask(__name__)
+app.secret_key = 'supersecretkey'
 
-# Получение значений переменных среды
-app.secret_key = os.getenv('SECRET_KEY', 'supersecretkey')  # Значение по умолчанию
-DATABASE = os.getenv('DATABASE_URL', 'sqlite:///users.db').replace('sqlite:///', '')  # Убираем префикс
-
-print(f"Используемая база данных: {DATABASE}")  # Вывод пути к базе данных
+# Путь к файлу базы данных
+DATABASE = os.path.join(os.getcwd(), "users.db")
 
 # --- Утилитарные функции ---
+
 def init_db():
     """Инициализация базы данных: создание файла и таблицы, если они отсутствуют."""
     if not os.path.exists(DATABASE):
@@ -31,6 +30,18 @@ def init_db():
         print("База данных успешно создана")
     else:
         print("База данных уже существует")
+
+def check_db():
+    """Проверка существования таблицы 'users'."""
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")
+    table_exists = cursor.fetchone()
+    if table_exists:
+        print("Таблица 'users' существует.")
+    else:
+        print("Таблица 'users' не существует!")
+    conn.close()
 
 @app.route('/')
 def home():
@@ -95,7 +106,6 @@ def login():
             return redirect(url_for('home'))
         else:
             return "Неверное имя пользователя или пароль.", 400
-
     return render_template('login.html')
 
 @app.route('/logout')
@@ -109,5 +119,6 @@ def internal_server_error(e):
 
 # --- Запуск приложения ---
 if __name__ == '__main__':
-    init_db()
+    init_db()  # Инициализация базы данных
+    check_db()  # Проверка таблицы
     app.run(host='0.0.0.0', port=5000)
