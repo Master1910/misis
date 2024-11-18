@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Добро пожаловать!</h2>
+<p>Количество зарегистрированных пользователей: {{ user_count }}</p>
+{% if username %}
+    <p>Привет, {{ username }}!</p>
+{% endif %}
+{% endblock %}
