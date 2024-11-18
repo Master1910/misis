@@ -13,10 +13,6 @@ DATABASE = os.path.join(os.getcwd(), "users.db")
 # --- Утилитарные функции ---
 def init_db():
     """Инициализация базы данных: создание файла и таблицы, если они отсутствуют."""
-    if os.path.exists(DATABASE) and not os.path.isfile(DATABASE):
-        print("Удаление файла базы данных, так как он не является файлом базы данных")
-        os.remove(DATABASE)
-    
     if not os.path.exists(DATABASE):
         print("Создание базы данных...")
         conn = sqlite3.connect(DATABASE)
@@ -59,10 +55,39 @@ def register():
                            (name, password, institute, interests))
             conn.commit()
             conn.close()
-            return redirect(url_for('login'))
+            return redirect(url_for('home'))
         except sqlite3.IntegrityError:
             return "Пользователь с таким именем уже существует.", 400
     return render_template('register.html')
+
+@app.route('/rules')
+def rules():
+    return render_template('rules.html')
+
+@app.route('/how_it_works')
+def how_it_works():
+    return render_template('how_it_works.html')
+
+@app.route('/how_it_built')
+def how_it_built():
+    return render_template('how_it_built.html')
+
+@app.route('/find_matches')
+def find_matches():
+    return render_template('find_matches.html')
+
+@app.route('/login')
+def login():
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop("username", None)
+    return redirect(url_for('home'))
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template("500.html"), 500
 
 # --- Запуск приложения ---
 if __name__ == '__main__':
