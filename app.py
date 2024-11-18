@@ -31,30 +31,34 @@ def init_db():
     else:
         print("База данных уже существует")
 
-def check_db():
-    """Проверка существования таблицы 'users'."""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")
-    table_exists = cursor.fetchone()
-    if table_exists:
-        print("Таблица 'users' существует.")
-    else:
-        print("Таблица 'users' не существует!")
-    conn.close()
+def count_online_users():
+    """Подсчитывает количество активных пользователей на сайте (например, через сессии)."""
+    # Для простоты можно использовать подсчет количества пользователей, которые вошли в систему.
+    # В реальном приложении можно создать отдельную таблицу для логирования активности.
+    return len(session)
 
 @app.route('/')
 def home():
+    """Главная страница: показывает количество пользователей и имя текущего пользователя."""
     username = session.get("username")
+    
+    # Проверяем наличие базы данных и таблицы
+    init_db()
+
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM users")
     user_count = cursor.fetchone()[0]
     conn.close()
-    return render_template("home.html", user_count=user_count, username=username)
+
+    # Получаем количество "активных" пользователей на сайте
+    active_users = count_online_users()
+
+    return render_template("home.html", user_count=user_count, username=username, active_users=active_users)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    """Регистрация нового пользователя."""
     if request.method == 'POST':
         name = request.form['name']
         password = generate_password_hash(request.form['password'])
@@ -73,24 +77,9 @@ def register():
             return "Пользователь с таким именем уже существует.", 400
     return render_template('register.html')
 
-@app.route('/rules')
-def rules():
-    return render_template('rules.html')
-
-@app.route('/how_it_works')
-def how_it_works():
-    return render_template('how_it_works.html')
-
-@app.route('/how_it_built')
-def how_it_built():
-    return render_template('how_it_built.html')
-
-@app.route('/find_matches')
-def find_matches():
-    return render_template('find_matches.html')
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """Страница входа пользователя."""
     if request.method == 'POST':
         name = request.form['name']
         password = request.form['password']
@@ -110,15 +99,16 @@ def login():
 
 @app.route('/logout')
 def logout():
+    """Выход из системы."""
     session.pop("username", None)
     return redirect(url_for('home'))
 
 @app.errorhandler(500)
 def internal_server_error(e):
+    """Обработка ошибок сервера."""
     return render_template("500.html"), 500
 
 # --- Запуск приложения ---
 if __name__ == '__main__':
     init_db()  # Инициализация базы данных
-    check_db()  # Проверка таблицы
     app.run(host='0.0.0.0', port=5000)
