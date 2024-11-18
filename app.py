@@ -8,25 +8,31 @@ app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 
 # Путь к файлу базы данных
-DATABASE = "users.db"
+DATABASE = os.path.join(os.getcwd(), "users.db")
 
 # --- Утилитарные функции ---
 def init_db():
     """Инициализация базы данных: создание файла и таблицы, если они отсутствуют."""
     if os.path.exists(DATABASE) and not os.path.isfile(DATABASE):
+        print("Удаление файла базы данных, так как он не является файлом базы данных")
         os.remove(DATABASE)
     
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT UNIQUE NOT NULL,
-                        password TEXT NOT NULL,
-                        institute TEXT,
-                        interests TEXT
-                     )''')
-    conn.commit()
-    conn.close()
+    if not os.path.exists(DATABASE):
+        print("Создание базы данных...")
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+                           id INTEGER PRIMARY KEY AUTOINCREMENT,
+                           name TEXT UNIQUE NOT NULL,
+                           password TEXT NOT NULL,
+                           institute TEXT,
+                           interests TEXT
+                        )''')
+        conn.commit()
+        conn.close()
+        print("База данных успешно создана")
+    else:
+        print("База данных уже существует")
 
 @app.route('/')
 def home():
