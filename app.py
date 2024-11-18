@@ -10,6 +10,8 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'supersecretkey')  # Значение по умолчанию
 DATABASE = os.getenv('DATABASE_URL', 'sqlite:///users.db').replace('sqlite:///', '')  # Убираем префикс
 
+print(f"Используемая база данных: {DATABASE}")  # Вывод пути к базе данных
+
 # --- Утилитарные функции ---
 def init_db():
     """Инициализация базы данных: создание файла и таблицы, если они отсутствуют."""
