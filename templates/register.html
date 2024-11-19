@@ -1,19 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Регистрация{% endblock %}
 {% block content %}
-    <h2>Регистрация нового пользователя</h2>
-    <div class="content-block fade">
-        <form method="post" action="{{ url_for('register') }}">
-            <label for="username">Имя пользователя:</label><br>
-            <input type="text" id="username" name="username" required><br><br>
-            
-            <label for="email">Email:</label><br>
-            <input type="email" id="email" name="email" required><br><br>
-            
-            <label for="password">Пароль:</label><br>
-            <input type="password" id="password" name="password" required><br><br>
-            
-            <button type="submit">Зарегистрироваться</button>
-        </form>
-    </div>
+<h2>Регистрация нового пользователя</h2>
+<div class="content-block fade">
+    <form method="post" action="{{ url_for('register') }}">
+        <label for="username">Имя пользователя:</label><br>
+        <input type="text" id="username" name="username" required><br><br>
+        
+        <label for="password">Пароль:</label><br>
+        <input type="password" id="password" name="password" required><br><br>
+
+        <label for="institute">Институт:</label><br>
+        <input type="text" id="institute" name="institute" required><br><br>
+        
+        <label for="interests">Интересы (через запятую):</label><br>
+        <textarea id="interests" name="interests" rows="3" required></textarea><br><br>
+
+        <button type="submit">Зарегистрироваться</button>
+    </form>
+</div>
 {% endblock %}
