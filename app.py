@@ -1,11 +1,27 @@
 from flask import Flask, render_template, request, redirect, url_for, session
+from flask_session import Session
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import os
+import redis
 
 # Создание приложения Flask
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
+
+# --- Конфигурация Redis для хранения сессий ---
+app.config['SESSION_TYPE'] = 'redis'
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_KEY_PREFIX'] = 'session:'
+app.config['SESSION_REDIS'] = redis.StrictRedis(host='localhost', port=6379, db=0)
+
+# Инициализация сессии
+Session(app)
+
+# Инициализация SocketIO
+socketio = SocketIO(app, manage_session=False)
 
 # Путь к файлу базы данных
 DATABASE = os.path.join(os.getcwd(), "users.db")
@@ -25,6 +41,20 @@ def init_db():
                                institute TEXT,
                                interests TEXT
                             )''')
+            cursor.execute('''CREATE TABLE IF NOT EXISTS interests (
+                               user_id INTEGER,
+                               interest TEXT,
+                               FOREIGN KEY (user_id) REFERENCES users (id)
+                            )''')
+            cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
+                               id INTEGER PRIMARY KEY AUTOINCREMENT,
+                               sender_id INTEGER,
+                               receiver_id INTEGER,
+                               message TEXT,
+                               timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                               FOREIGN KEY (sender_id) REFERENCES users (id),
+                               FOREIGN KEY (receiver_id) REFERENCES users (id)
+                            )''')
             conn.commit()
             cursor.close()
             conn.close()
@@ -34,18 +64,26 @@ def init_db():
     else:
         print("База данных уже существует")
 
+def find_users_with_common_interests(current_user_id):
+    """Поиск пользователей с общими интересами."""
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT DISTINCT u.name
+        FROM interests i1
+        JOIN interests i2 ON i1.interest = i2.interest
+        JOIN users u ON i2.user_id = u.id
+        WHERE i1.user_id = ? AND i2.user_id != ?
+    """, (current_user_id, current_user_id))
+    matches = cursor.fetchall()
+    conn.close()
+    return [match[0] for match in matches]
 
-def count_online_users():
-    """Возвращает количество активных пользователей."""
-    return len(session)
-
-
+# --- Маршруты ---
 @app.route('/')
 def home():
-    """Главная страница: показывает количество пользователей и имя текущего пользователя."""
+    """Главная страница."""
     username = session.get("username")
-
-    # Проверяем наличие базы данных и таблицы
     init_db()
 
     try:
@@ -59,17 +97,8 @@ def home():
         print(f"Ошибка при выполнении запроса: {e}")
         user_count = 0
 
-    # Получаем количество "активных" пользователей на сайте
-    active_users = len(session)  # Считаем активные сессии
-
-    return render_template(
-        "home.html",
-        title="Главная",
-        user_count=user_count,
-        username=username,
-        active_users=active_users,
-    )
-
+    active_users = len(app.config['SESSION_REDIS'].keys())  # Количество активных пользователей
+    return render_template("home.html", user_count=user_count, username=username, active_users=active_users)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -90,6 +119,10 @@ def register():
             cursor = conn.cursor()
             cursor.execute("INSERT INTO users (name, password, institute, interests) VALUES (?, ?, ?, ?)",
                            (name, password_hash, institute, interests))
+            user_id = cursor.lastrowid
+            interests_list = interests.split(',')
+            for interest in interests_list:
+                cursor.execute("INSERT INTO interests (user_id, interest) VALUES (?, ?)", (user_id, interest.strip()))
             conn.commit()
             cursor.close()
             conn.close()
@@ -100,34 +133,9 @@ def register():
             return f"Ошибка базы данных: {e}", 500
     return render_template('register.html')
 
-
-@app.route('/rules')
-def rules():
-    """Страница с правилами использования."""
-    return render_template('rules.html', title="Правила использования")
-
-
-@app.route('/how_it_works')
-def how_it_works():
-    """Страница 'Как это работает'."""
-    return render_template('how_it_works.html', title="Как это работает")
-
-
-@app.route('/how_it_built')
-def how_it_built():
-    """Страница 'Как это устроено'."""
-    return render_template('how_it_built.html', title="Как это устроено")
-
-
-@app.route('/find_matches')
-def find_matches():
-    """Страница 'Найти совпадения'."""
-    return render_template('find_matches.html', title="Найти совпадения")
-
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """Страница входа пользователя."""
+    """Авторизация пользователя."""
     if request.method == 'POST':
         name = request.form.get('name')
         password = request.form.get('password')
@@ -152,6 +160,22 @@ def login():
             return "Неверное имя пользователя или пароль.", 400
     return render_template('login.html')
 
+@app.route('/find_matches')
+def find_matches():
+    """Найти пользователей с общими интересами."""
+    username = session.get("username")
+    if not username:
+        return redirect(url_for('login'))
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE name = ?", (username,))
+    user_id = cursor.fetchone()[0]
+    cursor.close()
+    conn.close()
+
+    matches = find_users_with_common_interests(user_id)
+    return render_template('find_matches.html', matches=matches)
 
 @app.route('/logout')
 def logout():
@@ -159,20 +183,37 @@ def logout():
     session.pop("username", None)
     return redirect(url_for('home'))
 
+# --- WebSocket ---
+@socketio.on('send_message')
+def handle_message(data):
+    """Отправка сообщения."""
+    sender = session.get("username")
+    receiver = data['receiver']
+    message = data['message']
 
-@app.errorhandler(403)
-def forbidden(e):
-    """Обработка ошибки 403."""
-    return render_template("403.html"), 403
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO messages (sender_id, receiver_id, message)
+        VALUES (
+            (SELECT id FROM users WHERE name = ?),
+            (SELECT id FROM users WHERE name = ?),
+            ?
+        )
+    """, (sender, receiver, message))
+    conn.commit()
+    cursor.close()
+    conn.close()
 
+    emit('receive_message', {'sender': sender, 'message': message}, room=receiver)
 
-@app.errorhandler(500)
-def internal_server_error(e):
-    """Обработка ошибки сервера."""
-    return render_template("500.html"), 500
+@socketio.on('join')
+def on_join(data):
+    """Подключение к комнате."""
+    username = session.get("username")
+    join_room(username)
 
-
-# --- Запуск приложения ---
+# --- Запуск ---
 if __name__ == '__main__':
-    init_db()  # Инициализация базы данных
-    app.run(host='0.0.0.0', port=5000)
+    init_db()
+    socketio.run(app, host='0.0.0.0', port=5000)
