@@ -1,8 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Главная{% endblock %}
+
+{% block title %}{{ title }}{% endblock %}
+
 {% block content %}
-    <h2>Добро пожаловать!</h2>
-    <div class="content-block fade">
-        <p>Это сайт Telegram-бота МИСИС, где вы можете зарегистрироваться, войти в систему и узнать больше о нашем проекте.</p>
+<section id="dashboard" class="fade">
+    <h2>Добро пожаловать{{ ", " + username if username else "" }}!</h2>
+    <p>Добро пожаловать в систему Telegram-бота МИСИС!</p>
+    <div class="stats">
+        <div>
+            <span id="online-users">{{ user_count }}</span>
+            <p>Пользователей зарегистрировано</p>
+        </div>
+        <div>
+            <span id="active-users">{{ active_users }}</span>
+            <p>Пользователей онлайн</p>
+        </div>
     </div>
+</section>
 {% endblock %}
