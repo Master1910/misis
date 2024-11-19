@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_session import Session
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import os
@@ -15,7 +15,9 @@ app.config['SESSION_TYPE'] = 'redis'
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'session:'
-app.config['SESSION_REDIS'] = redis.StrictRedis(host='localhost', port=6379, db=0)
+# Использование предоставленного Redis URL
+redis_url = 'redis://red-csud6tilqhvc73clb1q0:6379'
+app.config['SESSION_REDIS'] = redis.StrictRedis.from_url(redis_url)
 
 # Инициализация сессии
 Session(app)
@@ -97,7 +99,12 @@ def home():
         print(f"Ошибка при выполнении запроса: {e}")
         user_count = 0
 
-    active_users = len(app.config['SESSION_REDIS'].keys())  # Количество активных пользователей
+    try:
+        active_users = len(app.config['SESSION_REDIS'].keys())  # Количество активных пользователей
+    except redis.ConnectionError as e:
+        print(f"Ошибка подключения к Redis: {e}")
+        active_users = 0
+
     return render_template("home.html", user_count=user_count, username=username, active_users=active_users)
 
 @app.route('/register', methods=['GET', 'POST'])
