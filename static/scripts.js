@@ -1,13 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
     console.log("JavaScript загружен и работает!");
 
-    // Подсветка активной ссылки
-    const navLinks = document.querySelectorAll(".sidebar nav a");
-    const currentPath = window.location.pathname;
-    navLinks.forEach(link => {
-        if (link.getAttribute("href") === currentPath) {
-            link.classList.add("active");
-        }
+    // Обрабатываем анимацию плавного появления содержимого
+    const fadeContainers = document.querySelectorAll('.fade');
+    fadeContainers.forEach(container => {
+        container.style.opacity = 0;
+        setTimeout(() => (container.style.opacity = 1), 50);
     });
 });
 
