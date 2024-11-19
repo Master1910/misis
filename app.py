@@ -91,6 +91,33 @@ def home():
 
     return render_template("home.html", user_count=user_count, username=username, active_users=active_users)
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """Регистрация нового пользователя."""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        # Проверка уникальности пользователя
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO users (name, password)
+                VALUES (?, ?)
+            """, (username, generate_password_hash(password)))
+            conn.commit()
+            session['username'] = username
+            return redirect(url_for('home'))
+        except sqlite3.IntegrityError:
+            error = "Пользователь с таким именем уже существует."
+            return render_template('register.html', title="Регистрация", error=error)
+        finally:
+            cursor.close()
+            conn.close()
+    return render_template('register.html', title="Регистрация")
+
 
 @app.route('/rules')
 def rules():
