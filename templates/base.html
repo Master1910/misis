@@ -25,10 +25,10 @@
             <a href="{{ url_for('login') }}">Вход</a> | 
             <a href="{{ url_for('rules') }}">Правила</a> | 
             <a href="{{ url_for('how_it_works') }}">Как работает</a> | 
-            <a href="{{ url_for('how_it_built') }}">Как устроен</a> | 
-            <a href="{{ url_for('find_matches') }}">Найти совпадения</a>
+            <a href="{{ url_for('how_it_built') }}">Как устроен</a> 
             {% if username %}
-            | <a href="{{ url_for('logout') }}">Выход</a>
+            | <a href="{{ url_for('find_matches') }}">Найти совпадения</a> | 
+            <a href="{{ url_for('logout') }}">Выход</a>
             {% endif %}
         </nav>
         {% block content %}
