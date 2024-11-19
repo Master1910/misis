@@ -118,6 +118,32 @@ def register():
             conn.close()
     return render_template('register.html', title="Регистрация")
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Страница входа пользователя."""
+    if request.method == 'POST':
+        name = request.form.get('name')
+        password = request.form.get('password')
+
+        if not name or not password:
+            return "Имя и пароль обязательны.", 400
+
+        try:
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            cursor.execute("SELECT password FROM users WHERE name = ?", (name,))
+            user = cursor.fetchone()
+            cursor.close()
+            conn.close()
+        except sqlite3.Error as e:
+            return f"Ошибка базы данных: {e}", 500
+
+        if user and check_password_hash(user[0], password):
+            session['username'] = name
+            return redirect(url_for('home'))
+        else:
+            return "Неверное имя пользователя или пароль.", 400
+    return render_template('login.html')
 
 @app.route('/rules')
 def rules():
