@@ -15,7 +15,6 @@ app.config['SESSION_TYPE'] = 'redis'
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'session:'
-# Использование предоставленного Redis URL
 redis_url = 'redis://red-csud6tilqhvc73clb1q0:6379'
 app.config['SESSION_REDIS'] = redis.StrictRedis.from_url(redis_url)
 
@@ -30,7 +29,7 @@ DATABASE = os.path.join(os.getcwd(), "users.db")
 
 # --- Утилитарные функции ---
 def init_db():
-    """Инициализация базы данных: создание файла и таблиц, если они отсутствуют."""
+    """Инициализация базы данных."""
     if not os.path.exists(DATABASE):
         print("Создание базы данных...")
         try:
@@ -66,21 +65,6 @@ def init_db():
     else:
         print("База данных уже существует")
 
-def find_users_with_common_interests(current_user_id):
-    """Поиск пользователей с общими интересами."""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT DISTINCT u.name
-        FROM interests i1
-        JOIN interests i2 ON i1.interest = i2.interest
-        JOIN users u ON i2.user_id = u.id
-        WHERE i1.user_id = ? AND i2.user_id != ?
-    """, (current_user_id, current_user_id))
-    matches = cursor.fetchall()
-    conn.close()
-    return [match[0] for match in matches]
-
 # --- Маршруты ---
 @app.route('/')
 def home():
@@ -100,76 +84,35 @@ def home():
         user_count = 0
 
     try:
-        active_users = len(app.config['SESSION_REDIS'].keys())  # Количество активных пользователей
+        active_users = len(app.config['SESSION_REDIS'].keys())
     except redis.ConnectionError as e:
         print(f"Ошибка подключения к Redis: {e}")
         active_users = 0
 
     return render_template("home.html", user_count=user_count, username=username, active_users=active_users)
 
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    """Регистрация нового пользователя."""
-    if request.method == 'POST':
-        name = request.form.get('name')
-        password = request.form.get('password')
-        institute = request.form.get('institute')
-        interests = request.form.get('interests')
 
-        if not name or not password:
-            return "Имя и пароль обязательны.", 400
+@app.route('/rules')
+def rules():
+    """Страница с правилами использования."""
+    return render_template('rules.html', title="Правила использования")
 
-        password_hash = generate_password_hash(password)
 
-        try:
-            conn = sqlite3.connect(DATABASE)
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO users (name, password, institute, interests) VALUES (?, ?, ?, ?)",
-                           (name, password_hash, institute, interests))
-            user_id = cursor.lastrowid
-            interests_list = interests.split(',')
-            for interest in interests_list:
-                cursor.execute("INSERT INTO interests (user_id, interest) VALUES (?, ?)", (user_id, interest.strip()))
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return redirect(url_for('home'))
-        except sqlite3.IntegrityError:
-            return "Пользователь с таким именем уже существует.", 400
-        except sqlite3.Error as e:
-            return f"Ошибка базы данных: {e}", 500
-    return render_template('register.html')
+@app.route('/how_it_works')
+def how_it_works():
+    """Страница 'Как это работает'."""
+    return render_template('how_it_works.html', title="Как это работает")
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """Авторизация пользователя."""
-    if request.method == 'POST':
-        name = request.form.get('name')
-        password = request.form.get('password')
 
-        if not name or not password:
-            return "Имя и пароль обязательны.", 400
+@app.route('/how_it_built')
+def how_it_built():
+    """Страница 'Как это устроено'."""
+    return render_template('how_it_built.html', title="Как это устроено")
 
-        try:
-            conn = sqlite3.connect(DATABASE)
-            cursor = conn.cursor()
-            cursor.execute("SELECT password FROM users WHERE name = ?", (name,))
-            user = cursor.fetchone()
-            cursor.close()
-            conn.close()
-        except sqlite3.Error as e:
-            return f"Ошибка базы данных: {e}", 500
-
-        if user and check_password_hash(user[0], password):
-            session['username'] = name
-            return redirect(url_for('home'))
-        else:
-            return "Неверное имя пользователя или пароль.", 400
-    return render_template('login.html')
 
 @app.route('/find_matches')
 def find_matches():
-    """Найти пользователей с общими интересами."""
+    """Страница 'Найти совпадения'."""
     username = session.get("username")
     if not username:
         return redirect(url_for('login'))
@@ -182,13 +125,27 @@ def find_matches():
     conn.close()
 
     matches = find_users_with_common_interests(user_id)
-    return render_template('find_matches.html', matches=matches)
+    return render_template('find_matches.html', title="Найти совпадения", matches=matches)
+
 
 @app.route('/logout')
 def logout():
     """Выход из системы."""
     session.pop("username", None)
     return redirect(url_for('home'))
+
+
+@app.errorhandler(403)
+def forbidden(e):
+    """Обработка ошибки 403."""
+    return render_template("403.html"), 403
+
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    """Обработка ошибки сервера."""
+    return render_template("500.html"), 500
+
 
 # --- WebSocket ---
 @socketio.on('send_message')
@@ -213,6 +170,7 @@ def handle_message(data):
     conn.close()
 
     emit('receive_message', {'sender': sender, 'message': message}, room=receiver)
+
 
 @socketio.on('join')
 def on_join(data):
