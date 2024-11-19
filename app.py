@@ -96,27 +96,69 @@ def register():
     """Регистрация нового пользователя."""
     if request.method == 'POST':
         username = request.form.get('username')
-        email = request.form.get('email')
         password = request.form.get('password')
+        institute = request.form.get('institute')
+        interests = request.form.get('interests')
 
-        # Проверка уникальности пользователя
-        conn = sqlite3.connect(DATABASE)
-        cursor = conn.cursor()
+        hashed_password = generate_password_hash(password)
+
         try:
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+
+            # Добавление пользователя в таблицу `users`
             cursor.execute("""
-                INSERT INTO users (name, password)
-                VALUES (?, ?)
-            """, (username, generate_password_hash(password)))
+                INSERT INTO users (name, password, institute, interests) 
+                VALUES (?, ?, ?, ?)
+            """, (username, hashed_password, institute, interests))
+
             conn.commit()
+            cursor.close()
+            conn.close()
+
             session['username'] = username
             return redirect(url_for('home'))
         except sqlite3.IntegrityError:
-            error = "Пользователь с таким именем уже существует."
+            error = "Имя пользователя уже существует. Попробуйте другое."
             return render_template('register.html', title="Регистрация", error=error)
-        finally:
-            cursor.close()
-            conn.close()
+
     return render_template('register.html', title="Регистрация")
+
+
+def find_users_with_common_interests(user_id):
+    """Поиск пользователей с общими интересами."""
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    # Получение интересов текущего пользователя
+    cursor.execute("SELECT interests FROM users WHERE id = ?", (user_id,))
+    user_interests = cursor.fetchone()
+    if not user_interests:
+        return []
+
+    user_interests = set(user_interests[0].split(','))
+
+    # Поиск других пользователей с совпадающими интересами
+    cursor.execute("SELECT id, name, interests FROM users WHERE id != ?", (user_id,))
+    all_users = cursor.fetchall()
+
+    matches = []
+    for other_id, other_name, other_interests in all_users:
+        if not other_interests:
+            continue
+        other_interests_set = set(other_interests.split(','))
+        common_interests = user_interests.intersection(other_interests_set)
+        if common_interests:
+            matches.append({
+                'id': other_id,
+                'name': other_name,
+                'common_interests': ', '.join(common_interests)
+            })
+
+    cursor.close()
+    conn.close()
+    return matches
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -179,6 +221,7 @@ def find_matches():
 
     matches = find_users_with_common_interests(user_id)
     return render_template('find_matches.html', title="Найти совпадения", matches=matches)
+
 
 
 @app.route('/logout')
