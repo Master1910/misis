@@ -1,75 +1,44 @@
-/* Общие стили */
-body {
-    font-family: 'Arial', sans-serif;
-    margin: 0;
-    padding: 0;
-    background: linear-gradient(to bottom, #FF7E00, #FF4500); /* Градиентный фон */
-    color: #333;
-    line-height: 1.6;
-}
-
-/* Стили для шапки */
-header {
-    background: linear-gradient(to right, #FF4500, #FF7E00); /* Градиент шапки */
-    color: white;
-    padding: 15px 20px;
-    text-align: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-header h1 {
-    margin: 0;
-    font-size: 1.8rem;
-}
-
-/* Стили для навигации */
-nav {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    padding: 10px 0;
-    background: linear-gradient(to right, #FF7E00, #FF4500);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-nav a {
-    color: white;
-    text-decoration: none;
-    margin: 0 10px;
-    font-size: 1rem;
+/* Подсветка активной ссылки */
+nav a.active {
+    background-color: rgba(255, 255, 255, 0.5);
+    color: black;
     font-weight: bold;
-    padding: 8px 15px;
     border-radius: 20px;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    padding: 8px 15px;
 }
 
-nav a:hover {
-    background-color: rgba(255, 255, 255, 0.3);
-    transform: scale(1.05);
-}
-
-/* Контент */
-.container {
-    max-width: 800px;
-    margin: 20px auto;
-    padding: 20px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    text-align: center;
-}
-
-/* Подвал */
-footer {
-    text-align: center;
-    background: linear-gradient(to right, #FF4500, #FF7E00);
+/* Всплывающее уведомление */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 15px 20px;
     color: white;
-    padding: 10px 0;
-    margin-top: 20px;
-    box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
+    background: #FF4500;
+    border-radius: 5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
-footer p {
-    margin: 0;
-    font-size: 0.9rem;
+.toast-success {
+    background: #28a745; /* Зеленый цвет для успеха */
+}
+
+.toast.hide {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+/* Анимация появления элементов при прокрутке */
+.fade {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-in {
+    opacity: 1;
+    transform: translateY(0);
 }
