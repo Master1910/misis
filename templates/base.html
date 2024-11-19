@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <!-- Шапка сайта -->
-    <header>
-        <h1>{{ title }}</h1>
+    <!-- Боковое меню -->
+    <div id="sidebar" class="sidebar">
+        <button class="close-btn" onclick="toggleSidebar()">×</button>
         <nav>
             <a href="{{ url_for('home') }}">Главная</a>
             <a href="{{ url_for('register') }}">Регистрация</a>
@@ -22,29 +22,28 @@
                 <a href="{{ url_for('logout') }}">Выход</a>
             {% endif %}
         </nav>
-    </header>
-
-    <!-- Приветствие -->
-    {% if welcome_message %}
-    <div class="welcome-message">
-        <p>Добро пожаловать на сайт Telegram-бота МИСИС!</p>
     </div>
-    {% endif %}
 
-    <!-- Основной контент -->
-    <main>
-        <div class="container">
-            {% block content %}
-            {% endblock %}
-        </div>
-    </main>
+    <!-- Основное содержимое -->
+    <div id="main-content" class="main-content">
+        <!-- Кнопка для бокового меню -->
+        <header>
+            <button class="menu-btn" onclick="toggleSidebar()">☰ Меню</button>
+            <h1>{{ title }}</h1>
+        </header>
+        <main>
+            <div class="container fade">
+                {% block content %}
+                <h2>Добро пожаловать!</h2>
+                <p>Используйте боковое меню для навигации.</p>
+                {% endblock %}
+            </div>
+        </main>
+    </div>
 
     <!-- Подвал -->
     <footer>
-        <div class="footer-highlight">
-            Telegram-бот МИСИС при поддержке Master_Elit МИРЭА © 2024
-        </div>
-        <p>Все права защищены.</p>
+        <p>Telegram-бот МИСИС при поддержке Master_Elit МИРЭА © 2024</p>
     </footer>
 
     <!-- Подключение JavaScript -->
