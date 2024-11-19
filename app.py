@@ -11,6 +11,7 @@ app.secret_key = 'supersecretkey'
 # Путь к файлу базы данных
 DATABASE = os.path.join(os.getcwd(), "users.db")
 
+
 # --- Утилитарные функции ---
 def init_db():
     """Инициализация базы данных: создание файла и таблиц, если они отсутствуют."""
@@ -55,7 +56,7 @@ def count_active_users():
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
     # Удаляем устаревших пользователей (например, неактивных более 10 минут)
-    cursor.execute("DELETE FROM active_users WHERE last_active < datetime('now', '-600 minutes')")
+    cursor.execute("DELETE FROM active_users WHERE last_active < datetime('now', '-10 minutes')")
     conn.commit()
     cursor.execute("SELECT COUNT(*) FROM active_users")
     active_users = cursor.fetchone()[0]
@@ -70,7 +71,7 @@ def get_common_interests(username):
     cursor = conn.cursor()
     cursor.execute("SELECT interests FROM users WHERE name = ?", (username,))
     user_interests = cursor.fetchone()
-    if not user_interests:
+    if not user_interests or not user_interests[0]:
         return []
 
     user_interests_set = set(user_interests[0].split(','))
@@ -78,9 +79,10 @@ def get_common_interests(username):
     matches = []
     for row in cursor.fetchall():
         other_user, other_interests = row
-        other_interests_set = set(other_interests.split(','))
-        if user_interests_set & other_interests_set:  # Проверяем пересечение
-            matches.append(other_user)
+        if other_interests:
+            other_interests_set = set(other_interests.split(','))
+            if user_interests_set & other_interests_set:  # Проверяем пересечение
+                matches.append(other_user)
 
     cursor.close()
     conn.close()
@@ -91,8 +93,6 @@ def get_common_interests(username):
 def home():
     """Главная страница: показывает количество пользователей и имя текущего пользователя."""
     username = session.get("username")
-
-    # Проверяем наличие базы данных и таблицы
     init_db()
 
     try:
@@ -106,7 +106,6 @@ def home():
         print(f"Ошибка при выполнении запроса: {e}")
         user_count = 0
 
-    # Получаем количество "активных" пользователей на сайте
     active_users = count_active_users()
 
     return render_template("home.html", user_count=user_count, username=username, active_users=active_users)
@@ -175,7 +174,7 @@ def login():
 
         if user and check_password_hash(user[0], password):
             session['username'] = name
-            update_active_users(name)  # Обновляем активность
+            update_active_users(name)
             return redirect(url_for('home'))
         else:
             return "Неверное имя пользователя или пароль.", 400
@@ -196,6 +195,12 @@ def logout():
     return redirect(url_for('home'))
 
 
+@app.route('/rules')
+def rules():
+    """Страница с правилами."""
+    return render_template('rules.html', title="Правила использования")
+
+
 @app.errorhandler(403)
 def forbidden(e):
     """Обработка ошибки 403."""
@@ -210,5 +215,5 @@ def internal_server_error(e):
 
 # --- Запуск приложения ---
 if __name__ == '__main__':
-    init_db()  # Инициализация базы данных
+    init_db()
     app.run(host='0.0.0.0', port=5000)
