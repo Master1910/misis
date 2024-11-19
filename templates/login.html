@@ -1,14 +1,16 @@
 {% extends "base.html" %}
+{% block title %}Вход{% endblock %}
 {% block content %}
-<h2>Вход</h2>
-<form method="post">
-    <label for="name">Имя пользователя:</label><br>
-    <input type="text" id="name" name="name" required><br><br>
-
-    <label for="password">Пароль:</label><br>
-    <input type="password" id="password" name="password" required><br><br>
-
-    <button type="submit">Войти</button>
-</form>
-<p>Нет аккаунта? <a href="{{ url_for('register') }}">Зарегистрироваться</a></p>
+    <h2>Вход в систему</h2>
+    <div class="content-block fade">
+        <form method="post" action="{{ url_for('login') }}">
+            <label for="username">Имя пользователя:</label><br>
+            <input type="text" id="username" name="username" required><br><br>
+            
+            <label for="password">Пароль:</label><br>
+            <input type="password" id="password" name="password" required><br><br>
+            
+            <button type="submit">Войти</button>
+        </form>
+    </div>
 {% endblock %}
