@@ -60,9 +60,15 @@ def home():
         user_count = 0
 
     # Получаем количество "активных" пользователей на сайте
-    active_users = count_online_users()
+    active_users = len(session)  # Считаем активные сессии
 
-    return render_template("home.html", user_count=user_count, username=username, active_users=active_users)
+    return render_template(
+        "home.html",
+        title="Главная",
+        user_count=user_count,
+        username=username,
+        active_users=active_users,
+    )
 
 
 @app.route('/register', methods=['GET', 'POST'])
