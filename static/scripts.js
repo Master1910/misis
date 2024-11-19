@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     console.log("JavaScript загружен и работает!");
 
-    // Подсветка активной ссылки в меню
+    // Подсветка активной ссылки
     const navLinks = document.querySelectorAll("nav a");
     const currentPath = window.location.pathname;
     navLinks.forEach(link => {
@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Добавление всплывающего уведомления при клике на кнопку
+    // Всплывающее уведомление
     const buttons = document.querySelectorAll("button");
     buttons.forEach(button => {
         button.addEventListener("click", () => {
@@ -18,30 +18,24 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // Всплывающее уведомление
     function showToast(message, type) {
         const toast = document.createElement("div");
         toast.className = `toast toast-${type}`;
         toast.textContent = message;
-
         document.body.appendChild(toast);
-
-        // Удаляем уведомление через 3 секунды
-        setTimeout(() => {
-            toast.classList.add("hide");
-            setTimeout(() => toast.remove(), 500);
-        }, 3000);
+        setTimeout(() => toast.remove(), 3000);
     }
-
-    // Добавление эффекта появления на элементы при прокрутке
-    const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add("fade-in");
-            }
-        });
-    });
-
-    const fadeElements = document.querySelectorAll(".fade");
-    fadeElements.forEach(el => observer.observe(el));
 });
+
+// Функция открытия/закрытия бокового меню
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('main-content');
+    if (sidebar.style.width === "250px") {
+        sidebar.style.width = "0";
+        mainContent.classList.remove('menu-open');
+    } else {
+        sidebar.style.width = "250px";
+        mainContent.classList.add('menu-open');
+    }
+}
