@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <!-- Шапка сайта -->
-    <header>
-        <h1>{{ title }}</h1>
+    <!-- Боковое меню -->
+    <div id="sidebar" class="sidebar">
+        <button class="close-btn" onclick="toggleSidebar()">×</button>
         <nav>
             <a href="{{ url_for('home') }}">Главная</a>
             <a href="{{ url_for('register') }}">Регистрация</a>
@@ -22,15 +22,24 @@
                 <a href="{{ url_for('logout') }}">Выход</a>
             {% endif %}
         </nav>
-    </header>
+    </div>
 
-    <!-- Основной контент -->
-    <main>
-        <div class="container">
-            {% block content %}
-            {% endblock %}
-        </div>
-    </main>
+    <!-- Основное содержимое -->
+    <div id="main-content" class="main-content">
+        <!-- Кнопка для бокового меню -->
+        <header>
+            <button class="menu-btn" onclick="toggleSidebar()">☰ Меню</button>
+            <h1>{{ title }}</h1>
+        </header>
+        <main>
+            <div class="container fade">
+                {% block content %}
+                <h2>Добро пожаловать!</h2>
+                <p>Используйте боковое меню для навигации.</p>
+                {% endblock %}
+            </div>
+        </main>
+    </div>
 
     <!-- Подвал -->
     <footer>
