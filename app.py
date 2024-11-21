@@ -173,28 +173,36 @@ def login():
 
 def find_users_with_common_interests(user_id):
     """Найти пользователей с общими интересами."""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
 
-    # Получаем интересы текущего пользователя
-    cursor.execute("SELECT interests FROM users WHERE id = ?", (user_id,))
-    user_interests = cursor.fetchone()
-    if not user_interests:
+        # Получаем интересы текущего пользователя
+        cursor.execute("SELECT interests FROM users WHERE id = ?", (user_id,))
+        user_interests = cursor.fetchone()
+        if not user_interests:
+            app.logger.warning(f"Пользователь с id {user_id} не найден.")
+            return []
+
+        user_interests = user_interests[0].split(",")  # Предположим, что интересы разделены запятой
+
+        # Ищем пользователей с общими интересами
+        cursor.execute("""
+            SELECT id, name, interests FROM users
+            WHERE id != ? AND interests LIKE ?
+        """, (user_id, f"%{user_interests[0]}%"))  # Простой поиск по первому интересу
+
+        matches = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return matches
+    except sqlite3.Error as e:
+        app.logger.error(f"Ошибка при выполнении запроса: {str(e)}")
         return []
-
-    user_interests = user_interests[0].split(",")  # Предположим, что интересы разделены запятой
-
-    # Ищем пользователей с общими интересами
-    cursor.execute("""
-        SELECT id, name, interests FROM users
-        WHERE id != ? AND interests LIKE ?
-    """, (user_id, f"%{user_interests[0]}%"))  # Простой поиск по первому интересу
-
-    matches = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    return matches
+    except Exception as e:
+        app.logger.error(f"Неизвестная ошибка: {str(e)}")
+        return []
 
 
 @app.route('/find_matches')
