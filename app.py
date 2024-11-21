@@ -35,8 +35,6 @@ def init_db():
         try:
             conn = sqlite3.connect(DATABASE)
             cursor = conn.cursor()
-
-            # Создание таблицы для пользователей
             cursor.execute('''CREATE TABLE IF NOT EXISTS users (
                                id INTEGER PRIMARY KEY AUTOINCREMENT,
                                name TEXT UNIQUE NOT NULL,
@@ -44,15 +42,11 @@ def init_db():
                                institute TEXT,
                                interests TEXT
                             )''')
-
-            # Создание таблицы для интересов
             cursor.execute('''CREATE TABLE IF NOT EXISTS interests (
                                user_id INTEGER,
                                interest TEXT,
                                FOREIGN KEY (user_id) REFERENCES users (id)
                             )''')
-
-            # Создание таблицы для сообщений
             cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
                                id INTEGER PRIMARY KEY AUTOINCREMENT,
                                sender_id INTEGER,
@@ -62,28 +56,14 @@ def init_db():
                                FOREIGN KEY (sender_id) REFERENCES users (id),
                                FOREIGN KEY (receiver_id) REFERENCES users (id)
                             )''')
-
-            # Создание таблицы для чатов
-            cursor.execute('''CREATE TABLE IF NOT EXISTS chats (
-                               id INTEGER PRIMARY KEY AUTOINCREMENT,
-                               user1_id INTEGER,
-                               user2_id INTEGER,
-                               is_closed INTEGER DEFAULT 0,  -- 0 - открыто, 1 - закрыто
-                               FOREIGN KEY (user1_id) REFERENCES users (id),
-                               FOREIGN KEY (user2_id) REFERENCES users (id)
-                            )''')
-
             conn.commit()
             cursor.close()
             conn.close()
             print("База данных успешно создана")
         except sqlite3.Error as e:
             print(f"Ошибка при создании базы данных: {e}")
-        except Exception as e:
-            print(f"Неизвестная ошибка: {e}")
     else:
         print("База данных уже существует")
-
 
 # --- Маршруты ---
 @app.route('/')
@@ -127,7 +107,7 @@ def register():
             cursor = conn.cursor()
 
             # Добавление пользователя в таблицу `users`
-            cursor.execute(""" 
+            cursor.execute("""
                 INSERT INTO users (name, password, institute, interests) 
                 VALUES (?, ?, ?, ?)
             """, (username, hashed_password, institute, interests))
@@ -143,6 +123,42 @@ def register():
             return render_template('register.html', title="Регистрация", error=error)
 
     return render_template('register.html', title="Регистрация")
+
+
+def find_users_with_common_interests(user_id):
+    """Поиск пользователей с общими интересами."""
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    # Получение интересов текущего пользователя
+    cursor.execute("SELECT interests FROM users WHERE id = ?", (user_id,))
+    user_interests = cursor.fetchone()
+    if not user_interests:
+        return []
+
+    user_interests = set(user_interests[0].split(','))
+
+    # Поиск других пользователей с совпадающими интересами
+    cursor.execute("SELECT id, name, interests FROM users WHERE id != ?", (user_id,))
+    all_users = cursor.fetchall()
+
+    matches = []
+    for other_id, other_name, other_interests in all_users:
+        if not other_interests:
+            continue
+        other_interests_set = set(other_interests.split(','))
+        common_interests = user_interests.intersection(other_interests_set)
+        if common_interests:
+            matches.append({
+                'id': other_id,
+                'name': other_name,
+                'common_interests': ', '.join(common_interests)
+            })
+
+    cursor.close()
+    conn.close()
+    return matches
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -171,38 +187,22 @@ def login():
             return "Неверное имя пользователя или пароль.", 400
     return render_template('login.html')
 
-def find_users_with_common_interests(user_id):
-    """Найти пользователей с общими интересами."""
-    try:
-        conn = sqlite3.connect(DATABASE)
-        cursor = conn.cursor()
+@app.route('/rules')
+def rules():
+    """Страница с правилами использования."""
+    return render_template('rules.html', title="Правила использования")
 
-        # Получаем интересы текущего пользователя
-        cursor.execute("SELECT interests FROM users WHERE id = ?", (user_id,))
-        user_interests = cursor.fetchone()
-        if not user_interests:
-            app.logger.warning(f"Пользователь с id {user_id} не найден.")
-            return []
 
-        user_interests = user_interests[0].split(",")  # Предположим, что интересы разделены запятой
+@app.route('/how_it_works')
+def how_it_works():
+    """Страница 'Как это работает'."""
+    return render_template('how_it_works.html', title="Как это работает")
 
-        # Ищем пользователей с общими интересами
-        cursor.execute("""
-            SELECT id, name, interests FROM users
-            WHERE id != ? AND interests LIKE ?
-        """, (user_id, f"%{user_interests[0]}%"))  # Простой поиск по первому интересу
 
-        matches = cursor.fetchall()
-        cursor.close()
-        conn.close()
-
-        return matches
-    except sqlite3.Error as e:
-        app.logger.error(f"Ошибка при выполнении запроса: {str(e)}")
-        return []
-    except Exception as e:
-        app.logger.error(f"Неизвестная ошибка: {str(e)}")
-        return []
+@app.route('/how_it_built')
+def how_it_built():
+    """Страница 'Как это устроено'."""
+    return render_template('how_it_built.html', title="Как это устроено")
 
 
 @app.route('/find_matches')
@@ -221,67 +221,6 @@ def find_matches():
 
     matches = find_users_with_common_interests(user_id)
     return render_template('find_matches.html', title="Найти совпадения", matches=matches)
-    
-@app.route('/chat/<int:user_id>')
-def chat(user_id):
-    """Отображение чата между двумя пользователями."""
-    username = session.get("username")
-    if not username:
-        return redirect(url_for('login'))
-
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-
-    # Получаем ID текущего пользователя
-    cursor.execute("SELECT id FROM users WHERE name = ?", (username,))
-    user1_id = cursor.fetchone()[0]
-
-    # Получаем имя собеседника
-    cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
-    receiver_name = cursor.fetchone()[0]
-
-    cursor.close()
-    conn.close()
-
-    return render_template('chat.html', receiver_id=user_id, receiver_name=receiver_name)
-
-@socketio.on('close_chat')
-def handle_close_chat(data):
-    receiver_id = data.get('receiver_id')
-    sender_name = session.get("username")
-
-    if not sender_name or not receiver_id:
-        return
-
-    # Логика для закрытия чата в базе данных
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE chats
-        SET is_closed = 1
-        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
-    """, (sender_id, receiver_id, receiver_id, sender_id))
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    # Отправляем уведомление всем пользователям чата
-    emit('chat_closed', {'message': 'Чат закрыт. Вы не можете отправлять сообщения.'}, room=receiver_id)
-
-
-@socketio.on('join')
-def on_join(data):
-    """Подключение к комнате."""
-    username = session.get("username")
-    room = data.get('username')  # Используем имя пользователя из данных
-    join_room(room)
-    emit('message', {'message': f'{username} присоединился к чату!'}, room=room)
-
-
-@app.route('/how_it_works')
-def how_it_works():
-    """Страница 'Как это работает'."""
-    return render_template('how_it_works.html', title="Как это работает")
 
 
 
@@ -291,20 +230,12 @@ def logout():
     session.pop("username", None)
     return redirect(url_for('home'))
 
-@app.route('/rules')
-def rules():
-    """Страница с правилами использования."""
-    return render_template('rules.html', title="Правила использования")
 
 @app.errorhandler(403)
 def forbidden(e):
     """Обработка ошибки 403."""
     return render_template("403.html"), 403
 
-@app.route('/how_it_built')
-def how_it_built():
-    """Страница 'Как это устроено'."""
-    return render_template('how_it_built.html', title="Как это устроено")
 
 @app.errorhandler(500)
 def internal_server_error(e):
@@ -314,47 +245,27 @@ def internal_server_error(e):
 
 # --- WebSocket ---
 @socketio.on('send_message')
-def handle_send_message(data):
+def handle_message(data):
     """Отправка сообщения."""
-    sender_name = session.get("username")  # Получаем имя пользователя из сессии
-    receiver_id = data.get('receiver_id')
-    message = data.get('message')
-
-    if not sender_name or not receiver_id or not message:
-        return
+    sender = session.get("username")
+    receiver = data['receiver']
+    message = data['message']
 
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
-
-    # Получаем ID текущего пользователя
-    cursor.execute("SELECT id FROM users WHERE name = ?", (sender_name,))
-    sender_id = cursor.fetchone()[0]
-
-    # Проверка, закрыт ли чат
-    cursor.execute("""
-        SELECT is_closed FROM chats
-        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
-    """, (sender_id, receiver_id, receiver_id, sender_id))
-    chat_status = cursor.fetchone()
-
-    if chat_status and chat_status[0] == 1:
-        emit('chat_closed', {'message': 'Чат закрыт. Вы не можете отправить сообщение.'})
-        return
-
-    # Вставка сообщения в таблицу messages
     cursor.execute("""
         INSERT INTO messages (sender_id, receiver_id, message)
-        VALUES (?, ?, ?)
-    """, (sender_id, receiver_id, message))
+        VALUES (
+            (SELECT id FROM users WHERE name = ?),
+            (SELECT id FROM users WHERE name = ?),
+            ?
+        )
+    """, (sender, receiver, message))
     conn.commit()
-
     cursor.close()
     conn.close()
 
-    # Отправка сообщения другому пользователю
-    emit('receive_message', {'sender': sender_name, 'message': message}, room=receiver_id)
-
-
+    emit('receive_message', {'sender': sender, 'message': message}, room=receiver)
 
 
 @socketio.on('join')
