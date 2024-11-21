@@ -289,17 +289,6 @@ def chat(user_id):
         return "Ошибка при загрузке чата.", 500
 
 
-
-@socketio.on('join')
-def on_join(data):
-    """Подключение к комнате."""
-    username = session.get("username")
-    room_id = data['room_id']
-    join_room(room_id)
-    emit('status', {'msg': f"{username} вошел в комнату {room_id}"}, room=room_id)
-
-
-
 #чаты
 @socketio.on('send_message')
 def handle_message(data):
