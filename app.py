@@ -212,15 +212,68 @@ def find_matches():
     if not username:
         return redirect(url_for('login'))
 
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM users WHERE name = ?", (username,))
-    user_id = cursor.fetchone()[0]
-    cursor.close()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
 
-    matches = find_users_with_common_interests(user_id)
-    return render_template('find_matches.html', title="Найти совпадения", matches=matches)
+        # Получаем ID текущего пользователя
+        cursor.execute("SELECT id FROM users WHERE name = ?", (username,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            return "Пользователь не найден в базе данных.", 404
+
+        user_id = user_row[0]
+        cursor.close()
+        conn.close()
+
+        # Ищем совпадения по интересам
+        matches = find_users_with_common_interests(user_id)
+
+        return render_template(
+            'find_matches.html', 
+            title="Найти совпадения", 
+            matches=matches
+        )
+
+    except sqlite3.Error as e:
+        print(f"Ошибка базы данных: {e}")
+        return "Произошла ошибка при поиске совпадений.", 500
+#для создания чата
+@app.route('/chat/<int:user_id>', methods=['GET'])
+def chat(user_id):
+    """Страница чата с другим пользователем."""
+    current_user = session.get("username")
+    if not current_user:
+        return redirect(url_for('login'))
+
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+
+        # Проверяем, существует ли пользователь
+        cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
+        target_user = cursor.fetchone()
+        if not target_user:
+            return "Пользователь не найден.", 404
+
+        # Получаем историю сообщений
+        cursor.execute("""
+            SELECT sender_id, message, timestamp 
+            FROM messages 
+            WHERE (sender_id = (SELECT id FROM users WHERE name = ?) AND receiver_id = ?)
+               OR (sender_id = ? AND receiver_id = (SELECT id FROM users WHERE name = ?))
+            ORDER BY timestamp
+        """, (current_user, user_id, user_id, current_user))
+        messages = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        return render_template('chat.html', messages=messages, target_user=target_user[0])
+
+    except sqlite3.Error as e:
+        print(f"Ошибка базы данных: {e}")
+        return "Ошибка при загрузке чата.", 500
 
 
 
