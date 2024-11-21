@@ -33,32 +33,50 @@ def init_db():
     if not os.path.exists(DATABASE):
         print("Создание базы данных...")
         try:
-            conn = sqlite3.connect(DATABASE)
-            cursor = conn.cursor()
-            cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-                               id INTEGER PRIMARY KEY AUTOINCREMENT,
-                               name TEXT UNIQUE NOT NULL,
-                               password TEXT NOT NULL,
-                               institute TEXT,
-                               interests TEXT
-                            )''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS interests (
-                               user_id INTEGER,
-                               interest TEXT,
-                               FOREIGN KEY (user_id) REFERENCES users (id)
-                            )''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
-                               id INTEGER PRIMARY KEY AUTOINCREMENT,
-                               sender_id INTEGER,
-                               receiver_id INTEGER,
-                               message TEXT,
-                               timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                               FOREIGN KEY (sender_id) REFERENCES users (id),
-                               FOREIGN KEY (receiver_id) REFERENCES users (id)
-                            )''')
-            conn.commit()
-            cursor.close()
-            conn.close()
+           conn = sqlite3.connect(DATABASE)
+cursor = conn.cursor()
+
+# Создание таблицы для пользователей
+cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       name TEXT UNIQUE NOT NULL,
+                       password TEXT NOT NULL,
+                       institute TEXT,
+                       interests TEXT
+                    )''')
+
+# Создание таблицы для интересов
+cursor.execute('''CREATE TABLE IF NOT EXISTS interests (
+                       user_id INTEGER,
+                       interest TEXT,
+                       FOREIGN KEY (user_id) REFERENCES users (id)
+                    )''')
+
+# Создание таблицы для сообщений
+cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       sender_id INTEGER,
+                       receiver_id INTEGER,
+                       message TEXT,
+                       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                       FOREIGN KEY (sender_id) REFERENCES users (id),
+                       FOREIGN KEY (receiver_id) REFERENCES users (id)
+                    )''')
+
+# Создание таблицы для чатов
+cursor.execute('''CREATE TABLE IF NOT EXISTS chats (
+                       id INTEGER PRIMARY KEY AUTOINCREMENT,
+                       user1_id INTEGER,
+                       user2_id INTEGER,
+                       is_closed INTEGER DEFAULT 0,  -- 0 - открыто, 1 - закрыто
+                       FOREIGN KEY (user1_id) REFERENCES users (id),
+                       FOREIGN KEY (user2_id) REFERENCES users (id)
+                    )''')
+
+conn.commit()
+cursor.close()
+conn.close()
+
             print("База данных успешно создана")
         except sqlite3.Error as e:
             print(f"Ошибка при создании базы данных: {e}")
@@ -304,27 +322,41 @@ def internal_server_error(e):
 
 # --- WebSocket ---
 @socketio.on('send_message')
-def handle_message(data):
+def handle_send_message(data):
     """Отправка сообщения."""
-    sender = session.get("username")
-    receiver = data['receiver']
-    message = data['message']
+    sender_name = session.get("username")
+    receiver_id = data.get('receiver_id')
+    message = data.get('message')
+
+    if not sender_name or not receiver_id or not message:
+        return
 
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM users WHERE name = ?", (sender_name,))
+    sender_id = cursor.fetchone()[0]
+
+    # Проверка, закрыт ли чат
+    cursor.execute("""
+        SELECT is_closed FROM chats
+        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+    """, (sender_id, receiver_id, receiver_id, sender_id))
+    chat_status = cursor.fetchone()
+
+    if chat_status and chat_status[0] == 1:
+        emit('chat_closed', {'message': 'Чат закрыт. Вы не можете отправить сообщение.'})
+        return
+
     cursor.execute("""
         INSERT INTO messages (sender_id, receiver_id, message)
-        VALUES (
-            (SELECT id FROM users WHERE name = ?),
-            (SELECT id FROM users WHERE name = ?),
-            ?
-        )
-    """, (sender, receiver, message))
+        VALUES (?, ?, ?)
+    """, (sender_id, receiver_id, message))
     conn.commit()
     cursor.close()
     conn.close()
 
-    emit('receive_message', {'sender': sender, 'message': message}, room=receiver)
+    emit('receive_message', {'sender': sender_name, 'message': message}, room=f"user_{receiver_id}")
 
 
 @socketio.on('join')
