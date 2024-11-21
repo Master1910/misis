@@ -1,38 +1,42 @@
 {% extends "base.html" %}
-
 {% block content %}
-<h2>Чат с {{ receiver_name }}</h2>
-<div id="chat-box" class="chat-box">
-    <!-- Сообщения будут отображаться здесь -->
-</div>
-<div class="chat-input">
-    <input type="text" id="message" placeholder="Введите сообщение...">
-    <button onclick="sendMessage()">Отправить</button>
+<div class="chat-container">
+    <h2>Чат с {{ receiver_name }}</h2>
+    <div id="messages" class="messages">
+        <!-- Сообщения появятся здесь -->
+    </div>
+    <form id="messageForm">
+        <input type="text" id="messageInput" placeholder="Введите сообщение" autocomplete="off">
+        <button type="submit">Отправить</button>
+    </form>
 </div>
 <script>
     const socket = io.connect();
-    const username = "{{ session['username'] }}";
-    const receiver = "{{ receiver_name }}";
+    const messagesDiv = document.getElementById('messages');
+    const messageForm = document.getElementById('messageForm');
+    const messageInput = document.getElementById('messageInput');
 
-    // Подключение к комнате
-    socket.emit('join', { room: username });
+    // Присоединение к комнате
+    socket.emit('join', {});
 
-    // Получение новых сообщений
-    socket.on('receive_message', (data) => {
-        const chatBox = document.getElementById('chat-box');
-        const messageElement = document.createElement('div');
-        messageElement.textContent = `${data.sender}: ${data.message}`;
-        chatBox.appendChild(messageElement);
+    // Отправка сообщения
+    messageForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const message = messageInput.value;
+        if (message) {
+            socket.emit('send_message', {
+                receiver_id: {{ receiver_id }},
+                message: message
+            });
+            messageInput.value = '';
+        }
     });
 
-    // Отправка сообщений
-    function sendMessage() {
-        const messageInput = document.getElementById('message');
-        const message = messageInput.value;
-        if (message.trim() !== "") {
-            socket.emit('send_message', { receiver: receiver, message: message });
-            messageInput.value = "";
-        }
-    }
+    // Получение сообщения
+    socket.on('receive_message', (data) => {
+        const message = document.createElement('div');
+        message.textContent = `${data.sender}: ${data.message}`;
+        messagesDiv.appendChild(message);
+    });
 </script>
 {% endblock %}
