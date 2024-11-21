@@ -159,24 +159,31 @@ def find_users_with_common_interests(user_id):
     conn.close()
     return matches
 
-@app.route('/chat/<int:user_id>')
-def chat(user_id):
-    """Чат с другим пользователем."""
+@app.route('/close_chat/<int:user_id>', methods=['POST'])
+def close_chat(user_id):
+    """Закрытие чата."""
     username = session.get("username")
     if not username:
         return redirect(url_for('login'))
 
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
-    cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
-    user = cursor.fetchone()
+
+    # Получаем ID отправителя
+    cursor.execute("SELECT id FROM users WHERE name = ?", (username,))
+    sender_id = cursor.fetchone()[0]
+
+    # Обновляем статус чата как закрытый
+    cursor.execute("""
+        UPDATE chats
+        SET is_closed = 1
+        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+    """, (sender_id, user_id, user_id, sender_id))
+    conn.commit()
     cursor.close()
     conn.close()
 
-    if not user:
-        return "Пользователь не найден", 404
-
-    return render_template('chat.html', title=f"Чат с {user[0]}", receiver_id=user_id, receiver_name=user[0])
+    return redirect(url_for('chat', user_id=user_id))
 
 @socketio.on('send_message')
 def handle_send_message(data):
