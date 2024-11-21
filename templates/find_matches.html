@@ -1,15 +1,10 @@
-{% extends "base.html" %}
-{% block content %}
-<h2>Пользователи с похожими интересами</h2>
-{% if matches %}
-    <ul>
-    {% for match in matches %}
-        <li>
-            <strong>{{ match.name }}</strong>: Общие интересы - {{ match.shared_interests | join(', ') }}
-        </li>
-    {% endfor %}
-    </ul>
-{% else %}
-    <p>К сожалению, мы не нашли пользователей с общими интересами.</p>
-{% endif %}
-{% endblock %}
+<ul>
+{% for match in matches %}
+    <li>
+        <strong>{{ match.name }}</strong>: Общие интересы - {{ match.common_interests }}
+        <form action="{{ url_for('chat', receiver_id=match.id) }}" method="get" style="display: inline;">
+            <button type="submit">Начать чат</button>
+        </form>
+    </li>
+{% endfor %}
+</ul>
