@@ -228,6 +228,13 @@ def chat(user_id):
 
     return render_template('chat.html', user_id=user_id, chat_closed=chat_closed, messages=messages)
 
+@app.route('/how_it_works')
+def how_it_works():
+    """Страница 'Как это работает'."""
+    return render_template('how_it_works.html', title="Как это работает")
+
+
+
 @app.route('/logout')
 def logout():
     """Выход из системы."""
@@ -244,6 +251,10 @@ def forbidden(e):
     """Обработка ошибки 403."""
     return render_template("403.html"), 403
 
+@app.route('/how_it_built')
+def how_it_built():
+    """Страница 'Как это устроено'."""
+    return render_template('how_it_built.html', title="Как это устроено")
 
 @app.errorhandler(500)
 def internal_server_error(e):
