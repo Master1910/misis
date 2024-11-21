@@ -187,47 +187,72 @@ def close_chat(user_id):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
-    # Получаем ID отправителя
+    # Получаем ID текущего пользователя
     cursor.execute("SELECT id FROM users WHERE name = ?", (username,))
     sender_id = cursor.fetchone()[0]
 
-    # Обновляем статус чата как закрытый
+    # Проверка, существует ли чат между текущим пользователем и получателем
     cursor.execute("""
-        UPDATE chats
-        SET is_closed = 1
+        SELECT id FROM chats
         WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
     """, (sender_id, user_id, user_id, sender_id))
-    conn.commit()
+    chat = cursor.fetchone()
+
+    if chat:
+        # Обновляем статус чата как закрытый
+        cursor.execute("""
+            UPDATE chats
+            SET is_closed = 1
+            WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+        """, (sender_id, user_id, user_id, sender_id))
+        conn.commit()
+
     cursor.close()
     conn.close()
 
     return redirect(url_for('chat', user_id=user_id))
 
-@socketio.on('send_message')
-def handle_send_message(data):
-    """Отправка сообщения."""
-    sender_name = session.get("username")
-    receiver_id = data.get('receiver_id')
-    message = data.get('message')
-
-    if not sender_name or not receiver_id or not message:
-        return
+@app.route('/chat/<int:user_id>')
+def chat(user_id):
+    """Отображение чата между двумя пользователями."""
+    username = session.get("username")
+    if not username:
+        return redirect(url_for('login'))
 
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id FROM users WHERE name = ?", (sender_name,))
-    sender_id = cursor.fetchone()[0]
+    # Получаем ID текущего пользователя
+    cursor.execute("SELECT id FROM users WHERE name = ?", (username,))
+    user1_id = cursor.fetchone()[0]
 
+    # Проверка, закрыт ли чат
     cursor.execute("""
-        INSERT INTO messages (sender_id, receiver_id, message)
-        VALUES (?, ?, ?)
-    """, (sender_id, receiver_id, message))
-    conn.commit()
+        SELECT is_closed FROM chats
+        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+    """, (user1_id, user_id, user_id, user1_id))
+    chat_status = cursor.fetchone()
+
+    if chat_status and chat_status[0] == 1:
+        chat_closed = True
+    else:
+        chat_closed = False
+
+    # Получаем сообщения
+    cursor.execute("""
+        SELECT sender_id, message, timestamp
+        FROM messages
+        WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
+        ORDER BY timestamp ASC
+    """, (user1_id, user_id, user_id, user1_id))
+    messages = cursor.fetchall()
+
     cursor.close()
     conn.close()
 
-    emit('receive_message', {'sender': sender_name, 'message': message}, room=f"user_{receiver_id}")
+    return render_template('chat.html', user_id=user_id, chat_closed=chat_closed, messages=messages)
+
+
 
 @socketio.on('join')
 def handle_join(data):
@@ -334,6 +359,7 @@ def handle_send_message(data):
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
 
+    # Получаем ID текущего пользователя
     cursor.execute("SELECT id FROM users WHERE name = ?", (sender_name,))
     sender_id = cursor.fetchone()[0]
 
@@ -348,15 +374,19 @@ def handle_send_message(data):
         emit('chat_closed', {'message': 'Чат закрыт. Вы не можете отправить сообщение.'})
         return
 
+    # Вставка сообщения в таблицу messages
     cursor.execute("""
         INSERT INTO messages (sender_id, receiver_id, message)
         VALUES (?, ?, ?)
     """, (sender_id, receiver_id, message))
     conn.commit()
+
     cursor.close()
     conn.close()
 
+    # Отправка сообщения другому пользователю
     emit('receive_message', {'sender': sender_name, 'message': message}, room=f"user_{receiver_id}")
+
 
 
 @socketio.on('join')
