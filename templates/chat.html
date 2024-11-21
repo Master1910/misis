@@ -2,7 +2,7 @@
 {% block content %}
 <div class="chat-container">
     <h2>Чат с {{ target_user }}</h2>
-    <div class="chat-history">
+    <div id="chat-history" class="chat-history">
         {% for sender_id, message, timestamp in messages %}
             <p><strong>{{ sender_id }}:</strong> {{ message }} <em>({{ timestamp }})</em></p>
         {% endfor %}
@@ -11,23 +11,33 @@
         <input type="text" id="message" placeholder="Введите сообщение" required>
         <button type="submit">Отправить</button>
     </form>
+    <button id="end-chat" onclick="endChat()">Завершить чат</button>
 </div>
 <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 <script>
     const socket = io.connect();
+    const room_id = "{{ room_id }}";
+
+    socket.emit('join', {room_id: room_id});
+
     const form = document.getElementById('chat-form');
     const messageInput = document.getElementById('message');
-    
+    const chatHistory = document.getElementById('chat-history');
+
     form.onsubmit = function(e) {
         e.preventDefault();
         const message = messageInput.value;
-        socket.emit('send_message', {receiver: "{{ target_user }}", message: message});
+        socket.emit('send_message', {room_id: room_id, message: message, receiver: "{{ target_user }}"});
         messageInput.value = '';
     };
 
     socket.on('receive_message', function(data) {
-        const chatHistory = document.querySelector('.chat-history');
         chatHistory.innerHTML += `<p><strong>${data.sender}:</strong> ${data.message}</p>`;
     });
+
+    function endChat() {
+        alert("Чат завершен!");
+        window.location.href = "/";
+    }
 </script>
 {% endblock %}
