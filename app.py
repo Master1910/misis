@@ -236,31 +236,14 @@ def chat(user_id):
     cursor.execute("SELECT id FROM users WHERE name = ?", (username,))
     user1_id = cursor.fetchone()[0]
 
-    # Проверка, закрыт ли чат
-    cursor.execute("""
-        SELECT is_closed FROM chats
-        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
-    """, (user1_id, user_id, user_id, user1_id))
-    chat_status = cursor.fetchone()
-
-    if chat_status and chat_status[0] == 1:
-        chat_closed = True
-    else:
-        chat_closed = False
-
-    # Получаем сообщения
-    cursor.execute("""
-        SELECT sender_id, message, timestamp
-        FROM messages
-        WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
-        ORDER BY timestamp ASC
-    """, (user1_id, user_id, user_id, user1_id))
-    messages = cursor.fetchall()
+    # Получаем имя собеседника
+    cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
+    receiver_name = cursor.fetchone()[0]
 
     cursor.close()
     conn.close()
 
-    return render_template('chat.html', user_id=user_id, chat_closed=chat_closed, messages=messages)
+    return render_template('chat.html', receiver_id=user_id, receiver_name=receiver_name)
 
 @app.route('/how_it_works')
 def how_it_works():
