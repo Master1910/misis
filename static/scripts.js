@@ -89,12 +89,12 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Скрытие или отображение бокового меню
-        if (sidebar.style.width === "250px") {
-            sidebar.style.width = "0"; // Скрыть боковое меню
+        // Используем классы для управления шириной и анимацией
+        if (sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open'); // Скрыть боковое меню
             mainContent.classList.remove('menu-open'); // Восстановить основной контент
         } else {
-            sidebar.style.width = "250px"; // Показать боковое меню
+            sidebar.classList.add('open'); // Показать боковое меню
             mainContent.classList.add('menu-open'); // Сдвиг основного контента вправо
         }
     }
