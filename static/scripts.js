@@ -10,15 +10,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const messagesContainer = document.getElementById('messages');
     const receiverIdInput = document.getElementById('receiver-id');
 
-    // Отправка сообщения
+    // Обработчик отправки сообщения
     if (sendMessageForm) {
         sendMessageForm.addEventListener('submit', (event) => {
             event.preventDefault(); // Отключаем обновление страницы
 
-            const receiverId = receiverIdInput.value;
+            const receiverId = receiverIdInput ? receiverIdInput.value : null;
             const message = messageInput.value;
 
-            if (message.trim() === '') {
+            if (!message.trim()) {
                 alert('Введите сообщение!');
                 return;
             }
@@ -29,6 +29,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 message: message
             });
 
+            // Добавляем отправленное сообщение в контейнер
+            addMessageToContainer('Вы', message);
+
             // Очищаем поле ввода
             messageInput.value = '';
         });
@@ -36,9 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Получение сообщения от сервера
     socket.on('receive_message', (data) => {
-        const newMessage = document.createElement('p');
-        newMessage.textContent = `${data.sender}: ${data.message}`;
-        messagesContainer.appendChild(newMessage);
+        addMessageToContainer(data.sender, data.message);
     });
 
     // Уведомление о закрытии чата
@@ -46,13 +47,25 @@ document.addEventListener("DOMContentLoaded", () => {
         alert(data.message);
     });
 
-    // Обрабатываем анимацию плавного появления содержимого
+    // Анимация плавного появления содержимого
     const fadeContainers = document.querySelectorAll('.fade');
     fadeContainers.forEach(container => {
         container.style.opacity = 0;
         setTimeout(() => (container.style.opacity = 1), 50);
     });
 });
+
+// Функция добавления сообщения в контейнер
+function addMessageToContainer(sender, message) {
+    const newMessage = document.createElement('p');
+    newMessage.textContent = `${sender}: ${message}`;
+    newMessage.classList.add('message-item');
+    const messagesContainer = document.getElementById('messages');
+    if (messagesContainer) {
+        messagesContainer.appendChild(newMessage);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight; // Прокручиваем вниз
+    }
+}
 
 // Функция открытия/закрытия бокового меню
 function toggleSidebar() {
