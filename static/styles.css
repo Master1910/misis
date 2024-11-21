@@ -120,9 +120,9 @@ body {
     transform: scale(1.05);
 }
 
-/* Контейнер */
-.container {
-    max-width: 900px;
+/* Контейнер для чата */
+.chat-container {
+    max-width: 600px;
     margin: 20px auto;
     padding: 20px;
     background: rgba(255, 255, 255, 0.8);
@@ -130,20 +130,63 @@ body {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.chat-box {
+.messages {
     border: 1px solid #ddd;
+    border-radius: 5px;
     padding: 10px;
     height: 300px;
     overflow-y: auto;
-    background: #fff;
-    border-radius: 5px;
     margin-bottom: 10px;
+    background: #fff;
 }
 
-.chat-input {
-    display: flex;
-    gap: 10px;
+#messageInput {
+    width: calc(100% - 100px);
+    padding: 10px;
 }
+
+button {
+    padding: 10px 20px;
+    background-color: #FF4500;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #FF6347;
+}
+
+/* Список совпадений */
+.matches-list {
+    list-style: none;
+    padding: 0;
+}
+
+.matches-list li {
+    margin: 10px 0;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chat-btn {
+    text-decoration: none;
+    padding: 5px 10px;
+    background-color: #FF4500;
+    color: white;
+    border-radius: 5px;
+}
+
+.chat-btn:hover {
+    background-color: #FF6347;
+}
+
 
 
 /* Подвал */
