@@ -20,6 +20,7 @@ body {
     justify-content: space-around;
     margin: 30px 0;
     text-align: center;
+    flex-wrap: wrap; /* Добавляем перенос элементов на новую строку */
 }
 
 .stats div {
@@ -28,7 +29,7 @@ body {
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    width: 30%;
+    width: 40%;
     text-align: center;
     font-size: 1.5em;
     font-weight: bold;
@@ -45,6 +46,30 @@ body {
     display: block;
     font-size: 2.5em;
     margin-top: 10px;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+    .stats div {
+        width: 100%; /* Панели занимают всю ширину */
+        padding: 15px; /* Уменьшаем padding */
+        font-size: 1.2em; /* Уменьшаем размер шрифта */
+    }
+    .stats span {
+        font-size: 2em; /* Уменьшаем размер цифр */
+    }
+}
+
+/* Очень маленькие экраны (например, телефоны в портретной ориентации) */
+@media (max-width: 480px) {
+    .stats div {
+        width: 100%; /* Панели занимают всю ширину */
+        padding: 10px; /* Еще уменьшаем отступы */
+        font-size: 1em; /* Уменьшаем размер шрифта */
+    }
+    .stats span {
+        font-size: 1.5em; /* Еще уменьшаем размер цифр */
+    }
 }
 
 /* --- Боковое меню --- */
