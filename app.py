@@ -299,11 +299,18 @@ def internal_server_error(e):
 # --- WebSocket ---
 @socketio.on('send_message')
 def handle_message(data):
-    """Отправка сообщения."""
+    """Отправка сообщения в комнату."""
     sender = session.get("username")
     receiver = data['receiver']
     message = data['message']
 
+    if not sender or not receiver or not message:
+        return
+
+    # Создаем уникальное имя комнаты
+    room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
+
+    # Сохраняем сообщение в базе данных
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -318,7 +325,26 @@ def handle_message(data):
     cursor.close()
     conn.close()
 
-    emit('receive_message', {'sender': sender, 'message': message}, room=receiver)
+    # Отправляем сообщение в комнату
+    emit('receive_message', {'sender': sender, 'message': message}, room=room)
+
+
+@socketio.on('join')
+def on_join(data):
+    """Подключение к уникальной комнате."""
+    sender = session.get("username")
+    receiver = data['receiver']
+    
+    if not sender or not receiver:
+        return
+
+    # Создаем уникальное имя комнаты для пары пользователей
+    room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
+    join_room(room)
+    emit('room_joined', {'room': room}, room=room)
+
+
+
 
 
 @socketio.on('join')
