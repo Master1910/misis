@@ -251,7 +251,7 @@ def internal_server_error(e):
 @socketio.on('send_message')
 def handle_send_message(data):
     """Отправка сообщения."""
-    sender_name = session.get("username")
+    sender_name = session.get("username")  # Получаем имя пользователя из сессии
     receiver_id = data.get('receiver_id')
     message = data.get('message')
 
@@ -287,7 +287,8 @@ def handle_send_message(data):
     conn.close()
 
     # Отправка сообщения другому пользователю
-emit('receive_message', {'sender': sender_name, 'message': message}, room=receiver_id)
+    emit('receive_message', {'sender': sender_name, 'message': message}, room=receiver_id)
+
 
 
 
