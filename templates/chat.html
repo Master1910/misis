@@ -1,33 +1,59 @@
 {% extends "base.html" %}
+
 {% block content %}
-<div class="chat-container">
+<div class="container">
     <h2>Чат с {{ target_user }}</h2>
-    <div class="chat-history">
-        {% for sender_id, message, timestamp in messages %}
-            <p><strong>{{ sender_id }}:</strong> {{ message }} <em>({{ timestamp }})</em></p>
-        {% endfor %}
+    <div class="chat-container">
+        <div class="chat-history" id="chat-history">
+            {% for sender_id, message, timestamp in messages %}
+                <div class="message">
+                    <p><strong>{{ sender_id }}:</strong> {{ message }}</p>
+                    <span class="timestamp">{{ timestamp }}</span>
+                </div>
+            {% endfor %}
+        </div>
+        <form id="chat-form" class="chat-form">
+            <input 
+                type="text" 
+                id="message" 
+                class="chat-input" 
+                placeholder="Введите сообщение..." 
+                autocomplete="off" 
+                required>
+            <button type="submit" class="chat-send-btn">Отправить</button>
+        </form>
     </div>
-    <form id="chat-form">
-        <input type="text" id="message" placeholder="Введите сообщение" required>
-        <button type="submit">Отправить</button>
-    </form>
 </div>
+
 <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 <script>
     const socket = io.connect();
-    const form = document.getElementById('chat-form');
+    const chatForm = document.getElementById('chat-form');
     const messageInput = document.getElementById('message');
-    
-    form.onsubmit = function(e) {
+    const chatHistory = document.getElementById('chat-history');
+
+    chatForm.onsubmit = function(e) {
         e.preventDefault();
-        const message = messageInput.value;
-        socket.emit('send_message', {receiver: "{{ target_user }}", message: message});
-        messageInput.value = '';
+        const message = messageInput.value.trim();
+
+        if (message) {
+            socket.emit('send_message', { 
+                receiver: "{{ target_user }}", 
+                message: message 
+            });
+            messageInput.value = '';
+        }
     };
 
     socket.on('receive_message', function(data) {
-        const chatHistory = document.querySelector('.chat-history');
-        chatHistory.innerHTML += `<p><strong>${data.sender}:</strong> ${data.message}</p>`;
+        const newMessage = document.createElement('div');
+        newMessage.classList.add('message');
+        newMessage.innerHTML = `
+            <p><strong>${data.sender}:</strong> ${data.message}</p>
+            <span class="timestamp">${new Date().toLocaleString()}</span>
+        `;
+        chatHistory.appendChild(newMessage);
+        chatHistory.scrollTop = chatHistory.scrollHeight; // Автопрокрутка вниз
     });
 </script>
 {% endblock %}
