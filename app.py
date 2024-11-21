@@ -159,6 +159,34 @@ def find_users_with_common_interests(user_id):
     conn.close()
     return matches
 
+@app.route('/chat/<int:receiver_id>')
+def chat(receiver_id):
+    """Страница чата с выбранным пользователем."""
+    username = session.get('username')
+    if not username:
+        return redirect(url_for('login'))
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    # Получение информации о получателе
+    cursor.execute("SELECT name FROM users WHERE id = ?", (receiver_id,))
+    receiver = cursor.fetchone()
+    if not receiver:
+        return "Пользователь не найден.", 404
+
+    cursor.close()
+    conn.close()
+    return render_template('chat.html', title="Чат", receiver_name=receiver[0])
+
+@socketio.on('join')
+def on_join(data):
+    """Подключение пользователя к комнате."""
+    username = session.get("username")
+    room = data.get('room', username)
+    join_room(room)
+    emit('status', {'msg': f'{username} вошел в комнату.'}, room=room)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
