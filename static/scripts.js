@@ -79,6 +79,31 @@ document.addEventListener("DOMContentLoaded", () => {
         alert("Чат закрыт. Вы больше не можете отправлять сообщения.");
     }
 
+    // Функция открытия/закрытия бокового меню
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+        
+        if (!sidebar || !mainContent) {
+            console.error('Элементы для боковой панели не найдены!');
+            return;
+        }
+
+        if (sidebar.style.width === "250px") {
+            sidebar.style.width = "0";
+            mainContent.classList.remove('menu-open');
+        } else {
+            sidebar.style.width = "250px";
+            mainContent.classList.add('menu-open');
+        }
+    }
+
+    // Подключаем обработчик для кнопки боковой панели
+    const sidebarButton = document.getElementById('sidebar-toggle-btn'); // Кнопка для открытия боковой панели
+    if (sidebarButton) {
+        sidebarButton.addEventListener('click', toggleSidebar);
+    }
+
     // Анимация плавного появления содержимого
     const fadeContainers = document.querySelectorAll('.fade');
     fadeContainers.forEach(container => {
