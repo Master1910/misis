@@ -159,33 +159,57 @@ def find_users_with_common_interests(user_id):
     conn.close()
     return matches
 
-@app.route('/chat/<int:receiver_id>')
-def chat(receiver_id):
-    """Страница чата с выбранным пользователем."""
-    username = session.get('username')
+@app.route('/chat/<int:user_id>')
+def chat(user_id):
+    """Чат с другим пользователем."""
+    username = session.get("username")
     if not username:
         return redirect(url_for('login'))
 
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
-
-    # Получение информации о получателе
-    cursor.execute("SELECT name FROM users WHERE id = ?", (receiver_id,))
-    receiver = cursor.fetchone()
-    if not receiver:
-        return "Пользователь не найден.", 404
-
+    cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
     cursor.close()
     conn.close()
-    return render_template('chat.html', title="Чат", receiver_name=receiver[0])
+
+    if not user:
+        return "Пользователь не найден", 404
+
+    return render_template('chat.html', title=f"Чат с {user[0]}", receiver_id=user_id, receiver_name=user[0])
+
+@socketio.on('send_message')
+def handle_send_message(data):
+    """Отправка сообщения."""
+    sender_name = session.get("username")
+    receiver_id = data.get('receiver_id')
+    message = data.get('message')
+
+    if not sender_name or not receiver_id or not message:
+        return
+
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id FROM users WHERE name = ?", (sender_name,))
+    sender_id = cursor.fetchone()[0]
+
+    cursor.execute("""
+        INSERT INTO messages (sender_id, receiver_id, message)
+        VALUES (?, ?, ?)
+    """, (sender_id, receiver_id, message))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    emit('receive_message', {'sender': sender_name, 'message': message}, room=f"user_{receiver_id}")
 
 @socketio.on('join')
-def on_join(data):
-    """Подключение пользователя к комнате."""
-    username = session.get("username")
-    room = data.get('room', username)
-    join_room(room)
-    emit('status', {'msg': f'{username} вошел в комнату.'}, room=room)
+def handle_join(data):
+    """Присоединение к комнате."""
+    user_id = session.get("username")
+    if user_id:
+        join_room(f"user_{user_id}")
 
 
 @app.route('/login', methods=['GET', 'POST'])
