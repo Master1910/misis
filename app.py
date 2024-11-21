@@ -171,6 +171,32 @@ def login():
             return "Неверное имя пользователя или пароль.", 400
     return render_template('login.html')
 
+def find_users_with_common_interests(user_id):
+    """Найти пользователей с общими интересами."""
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    # Получаем интересы текущего пользователя
+    cursor.execute("SELECT interests FROM users WHERE id = ?", (user_id,))
+    user_interests = cursor.fetchone()
+    if not user_interests:
+        return []
+
+    user_interests = user_interests[0].split(",")  # Предположим, что интересы разделены запятой
+
+    # Ищем пользователей с общими интересами
+    cursor.execute("""
+        SELECT id, name, interests FROM users
+        WHERE id != ? AND interests LIKE ?
+    """, (user_id, f"%{user_interests[0]}%"))  # Простой поиск по первому интересу
+
+    matches = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return matches
+
+
 @app.route('/find_matches')
 def find_matches():
     """Страница 'Найти совпадения'."""
@@ -187,7 +213,7 @@ def find_matches():
 
     matches = find_users_with_common_interests(user_id)
     return render_template('find_matches.html', title="Найти совпадения", matches=matches)
-
+    
 @app.route('/chat/<int:user_id>')
 def chat(user_id):
     """Отображение чата между двумя пользователями."""
