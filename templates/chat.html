@@ -2,28 +2,37 @@
 {% block content %}
 <div class="chat-container">
     <h2>Чат с {{ receiver_name }}</h2>
+    <div class="chat-info">
+        <p>Вы общаетесь с: <strong>{{ receiver_name }}</strong></p>
+        <p>Ваш ник: <strong>{{ session['username'] }}</strong></p>
+    </div>
     <div id="messages" class="messages">
-        <!-- Сообщения появятся здесь -->
+        <!-- Сообщения будут отображаться здесь -->
     </div>
     <form id="messageForm">
         <input type="text" id="messageInput" placeholder="Введите сообщение" autocomplete="off">
         <button type="submit">Отправить</button>
     </form>
+    <button id="closeChatBtn" class="close-chat-btn">Закрыть чат</button>
 </div>
 <script>
     const socket = io.connect();
     const messagesDiv = document.getElementById('messages');
     const messageForm = document.getElementById('messageForm');
     const messageInput = document.getElementById('messageInput');
+    const closeChatBtn = document.getElementById('closeChatBtn');
 
     // Присоединение к комнате
     socket.emit('join', {});
+
+    // Проверка на наличие состояния "закрыт"
+    let isChatClosed = false;
 
     // Отправка сообщения
     messageForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const message = messageInput.value;
-        if (message) {
+        if (message && !isChatClosed) {
             socket.emit('send_message', {
                 receiver_id: {{ receiver_id }},
                 message: message
@@ -34,9 +43,20 @@
 
     // Получение сообщения
     socket.on('receive_message', (data) => {
-        const message = document.createElement('div');
-        message.textContent = `${data.sender}: ${data.message}`;
-        messagesDiv.appendChild(message);
+        if (!isChatClosed) {
+            const message = document.createElement('div');
+            message.textContent = `${data.sender}: ${data.message}`;
+            messagesDiv.appendChild(message);
+        }
+    });
+
+    // Закрытие чата
+    closeChatBtn.addEventListener('click', () => {
+        isChatClosed = true;
+        closeChatBtn.disabled = true;
+        messageForm.querySelector('button').disabled = true; // Отключаем кнопку отправки сообщений
+        messageInput.disabled = true; // Отключаем поле ввода
+        alert("Чат закрыт. Вы больше не можете отправлять сообщения.");
     });
 </script>
 {% endblock %}
