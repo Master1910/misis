@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+у меня вот такй java document.addEventListener("DOMContentLoaded", () => {
     console.log("JavaScript загружен и работает!");
 
     // Подключение WebSocket
