@@ -130,6 +130,22 @@ body {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+.chat-box {
+    border: 1px solid #ddd;
+    padding: 10px;
+    height: 300px;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.chat-input {
+    display: flex;
+    gap: 10px;
+}
+
+
 /* Подвал */
 footer {
     background: linear-gradient(90deg, #FF4500, #FF6347, #FF7F50);
