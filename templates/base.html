@@ -9,7 +9,7 @@
 <body>
     <!-- Боковое меню -->
     <div id="sidebar" class="sidebar">
-        <button id="sidebar-toggle-btn" class="menu-btn">☰ Меню</button>
+        <button class="close-btn" onclick="toggleSidebar()">×</button>
         <nav>
             <a href="{{ url_for('home') }}">Главная</a>
             <a href="{{ url_for('register') }}">Регистрация</a>
