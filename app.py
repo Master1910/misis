@@ -245,6 +245,15 @@ def chat(user_id):
 
     return render_template('chat.html', receiver_id=user_id, receiver_name=receiver_name)
 
+@socketio.on('join')
+def on_join(data):
+    """Подключение к комнате."""
+    username = session.get("username")
+    room = data.get('username')  # Используем имя пользователя из данных
+    join_room(room)
+    emit('message', {'message': f'{username} присоединился к чату!'}, room=room)
+
+
 @app.route('/how_it_works')
 def how_it_works():
     """Страница 'Как это работает'."""
