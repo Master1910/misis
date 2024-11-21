@@ -245,6 +245,30 @@ def chat(user_id):
 
     return render_template('chat.html', receiver_id=user_id, receiver_name=receiver_name)
 
+@socketio.on('close_chat')
+def handle_close_chat(data):
+    receiver_id = data.get('receiver_id')
+    sender_name = session.get("username")
+
+    if not sender_name or not receiver_id:
+        return
+
+    # Логика для закрытия чата в базе данных
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE chats
+        SET is_closed = 1
+        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+    """, (sender_id, receiver_id, receiver_id, sender_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    # Отправляем уведомление всем пользователям чата
+    emit('chat_closed', {'message': 'Чат закрыт. Вы не можете отправлять сообщения.'}, room=receiver_id)
+
+
 @socketio.on('join')
 def on_join(data):
     """Подключение к комнате."""
