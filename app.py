@@ -33,55 +33,57 @@ def init_db():
     if not os.path.exists(DATABASE):
         print("Создание базы данных...")
         try:
-           conn = sqlite3.connect(DATABASE)
-cursor = conn.cursor()
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
 
-# Создание таблицы для пользователей
-cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-                       id INTEGER PRIMARY KEY AUTOINCREMENT,
-                       name TEXT UNIQUE NOT NULL,
-                       password TEXT NOT NULL,
-                       institute TEXT,
-                       interests TEXT
-                    )''')
+            # Создание таблицы для пользователей
+            cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+                               id INTEGER PRIMARY KEY AUTOINCREMENT,
+                               name TEXT UNIQUE NOT NULL,
+                               password TEXT NOT NULL,
+                               institute TEXT,
+                               interests TEXT
+                            )''')
 
-# Создание таблицы для интересов
-cursor.execute('''CREATE TABLE IF NOT EXISTS interests (
-                       user_id INTEGER,
-                       interest TEXT,
-                       FOREIGN KEY (user_id) REFERENCES users (id)
-                    )''')
+            # Создание таблицы для интересов
+            cursor.execute('''CREATE TABLE IF NOT EXISTS interests (
+                               user_id INTEGER,
+                               interest TEXT,
+                               FOREIGN KEY (user_id) REFERENCES users (id)
+                            )''')
 
-# Создание таблицы для сообщений
-cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
-                       id INTEGER PRIMARY KEY AUTOINCREMENT,
-                       sender_id INTEGER,
-                       receiver_id INTEGER,
-                       message TEXT,
-                       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                       FOREIGN KEY (sender_id) REFERENCES users (id),
-                       FOREIGN KEY (receiver_id) REFERENCES users (id)
-                    )''')
+            # Создание таблицы для сообщений
+            cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
+                               id INTEGER PRIMARY KEY AUTOINCREMENT,
+                               sender_id INTEGER,
+                               receiver_id INTEGER,
+                               message TEXT,
+                               timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                               FOREIGN KEY (sender_id) REFERENCES users (id),
+                               FOREIGN KEY (receiver_id) REFERENCES users (id)
+                            )''')
 
-# Создание таблицы для чатов
-cursor.execute('''CREATE TABLE IF NOT EXISTS chats (
-                       id INTEGER PRIMARY KEY AUTOINCREMENT,
-                       user1_id INTEGER,
-                       user2_id INTEGER,
-                       is_closed INTEGER DEFAULT 0,  -- 0 - открыто, 1 - закрыто
-                       FOREIGN KEY (user1_id) REFERENCES users (id),
-                       FOREIGN KEY (user2_id) REFERENCES users (id)
-                    )''')
+            # Создание таблицы для чатов
+            cursor.execute('''CREATE TABLE IF NOT EXISTS chats (
+                               id INTEGER PRIMARY KEY AUTOINCREMENT,
+                               user1_id INTEGER,
+                               user2_id INTEGER,
+                               is_closed INTEGER DEFAULT 0,  -- 0 - открыто, 1 - закрыто
+                               FOREIGN KEY (user1_id) REFERENCES users (id),
+                               FOREIGN KEY (user2_id) REFERENCES users (id)
+                            )''')
 
-conn.commit()
-cursor.close()
-conn.close()
-
+            conn.commit()
+            cursor.close()
+            conn.close()
             print("База данных успешно создана")
         except sqlite3.Error as e:
             print(f"Ошибка при создании базы данных: {e}")
+        except Exception as e:
+            print(f"Неизвестная ошибка: {e}")
     else:
         print("База данных уже существует")
+
 
 # --- Маршруты ---
 @app.route('/')
