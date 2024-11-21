@@ -238,6 +238,8 @@ def find_matches():
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
         return "Произошла ошибка при поиске совпадений.", 500
+
+
 #для создания чата
 @app.route('/chat/<int:user_id>', methods=['GET'])
 def chat(user_id):
@@ -250,30 +252,85 @@ def chat(user_id):
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
 
-        # Проверяем, существует ли пользователь
+        # Получаем ID текущего пользователя
+        cursor.execute("SELECT id FROM users WHERE name = ?", (current_user,))
+        current_user_id = cursor.fetchone()
+        if not current_user_id:
+            return "Текущий пользователь не найден.", 404
+
+        current_user_id = current_user_id[0]
+
+        # Проверяем, существует ли другой пользователь
         cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
         target_user = cursor.fetchone()
         if not target_user:
-            return "Пользователь не найден.", 404
+            return "Другой пользователь не найден.", 404
 
-        # Получаем историю сообщений
+        # Генерируем уникальный ID комнаты
+        room_id = f"{min(current_user_id, user_id)}_{max(current_user_id, user_id)}"
+
+        # Получаем историю сообщений для комнаты
         cursor.execute("""
             SELECT sender_id, message, timestamp 
             FROM messages 
-            WHERE (sender_id = (SELECT id FROM users WHERE name = ?) AND receiver_id = ?)
-               OR (sender_id = ? AND receiver_id = (SELECT id FROM users WHERE name = ?))
+            WHERE (sender_id = ? AND receiver_id = ?)
+               OR (sender_id = ? AND receiver_id = ?)
             ORDER BY timestamp
-        """, (current_user, user_id, user_id, current_user))
+        """, (current_user_id, user_id, user_id, current_user_id))
         messages = cursor.fetchall()
 
         cursor.close()
         conn.close()
 
-        return render_template('chat.html', messages=messages, target_user=target_user[0])
+        return render_template('chat.html', messages=messages, target_user=target_user[0], room_id=room_id)
 
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка при загрузке чата.", 500
+
+
+
+@socketio.on('join')
+def on_join(data):
+    """Подключение к комнате."""
+    username = session.get("username")
+    room_id = data['room_id']
+    join_room(room_id)
+    emit('status', {'msg': f"{username} вошел в комнату {room_id}"}, room=room_id)
+
+
+
+#чаты
+@socketio.on('send_message')
+def handle_message(data):
+    """Отправка сообщения."""
+    sender = session.get("username")
+    room_id = data['room_id']
+    message = data['message']
+
+    # Сохраняем сообщение в базе данных
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO messages (sender_id, receiver_id, message)
+            VALUES (
+                (SELECT id FROM users WHERE name = ?),
+                (SELECT id FROM users WHERE id = (SELECT id FROM users WHERE name = ?)),
+                ?
+            )
+        """, (sender, data['receiver'], message))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    except sqlite3.Error as e:
+        print(f"Ошибка базы данных: {e}")
+        return
+
+    emit('receive_message', {'sender': sender, 'message': message}, room=room_id)
+
 
 
 
@@ -294,31 +351,6 @@ def forbidden(e):
 def internal_server_error(e):
     """Обработка ошибки сервера."""
     return render_template("500.html"), 500
-
-
-# --- WebSocket ---
-@socketio.on('send_message')
-def handle_message(data):
-    """Отправка сообщения."""
-    sender = session.get("username")
-    receiver = data['receiver']
-    message = data['message']
-
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO messages (sender_id, receiver_id, message)
-        VALUES (
-            (SELECT id FROM users WHERE name = ?),
-            (SELECT id FROM users WHERE name = ?),
-            ?
-        )
-    """, (sender, receiver, message))
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    emit('receive_message', {'sender': sender, 'message': message}, room=receiver)
 
 
 @socketio.on('join')
