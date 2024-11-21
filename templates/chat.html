@@ -2,13 +2,7 @@
 {% block content %}
 <div class="chat-container">
     <h2>Чат с {{ receiver_name }}</h2>
-    <div class="chat-info">
-        <p>Вы общаетесь с: <strong>{{ receiver_name }}</strong></p>
-        <p>Ваш ник: <strong>{{ session['username'] }}</strong></p>
-    </div>
-    <div id="messages" class="messages">
-        <!-- Сообщения будут отображаться здесь -->
-    </div>
+    <div id="messages" class="messages"></div>
     <form id="messageForm">
         <input type="text" id="messageInput" placeholder="Введите сообщение" autocomplete="off">
         <button type="submit">Отправить</button>
@@ -16,6 +10,10 @@
     <button id="closeChatBtn" class="close-chat-btn">Закрыть чат</button>
 </div>
 <script>
+    const receiverId = {{ receiver_id }};
+</script>
+{% endblock %}
+
     const socket = io.connect();
     const messagesDiv = document.getElementById('messages');
     const messageForm = document.getElementById('messageForm');
