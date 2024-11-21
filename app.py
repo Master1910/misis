@@ -234,6 +234,10 @@ def logout():
     session.pop("username", None)
     return redirect(url_for('home'))
 
+@app.route('/rules')
+def rules():
+    """Страница с правилами использования."""
+    return render_template('rules.html', title="Правила использования")
 
 @app.errorhandler(403)
 def forbidden(e):
