@@ -1,1 +1,38 @@
+{% extends "base.html" %}
 
+{% block content %}
+<h2>Чат с {{ receiver_name }}</h2>
+<div id="chat-box" class="chat-box">
+    <!-- Сообщения будут отображаться здесь -->
+</div>
+<div class="chat-input">
+    <input type="text" id="message" placeholder="Введите сообщение...">
+    <button onclick="sendMessage()">Отправить</button>
+</div>
+<script>
+    const socket = io.connect();
+    const username = "{{ session['username'] }}";
+    const receiver = "{{ receiver_name }}";
+
+    // Подключение к комнате
+    socket.emit('join', { room: username });
+
+    // Получение новых сообщений
+    socket.on('receive_message', (data) => {
+        const chatBox = document.getElementById('chat-box');
+        const messageElement = document.createElement('div');
+        messageElement.textContent = `${data.sender}: ${data.message}`;
+        chatBox.appendChild(messageElement);
+    });
+
+    // Отправка сообщений
+    function sendMessage() {
+        const messageInput = document.getElementById('message');
+        const message = messageInput.value;
+        if (message.trim() !== "") {
+            socket.emit('send_message', { receiver: receiver, message: message });
+            messageInput.value = "";
+        }
+    }
+</script>
+{% endblock %}
