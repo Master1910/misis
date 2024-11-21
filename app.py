@@ -127,7 +127,7 @@ def register():
             cursor = conn.cursor()
 
             # Добавление пользователя в таблицу `users`
-            cursor.execute("""
+            cursor.execute(""" 
                 INSERT INTO users (name, password, institute, interests) 
                 VALUES (?, ?, ?, ?)
             """, (username, hashed_password, institute, interests))
@@ -144,75 +144,49 @@ def register():
 
     return render_template('register.html', title="Регистрация")
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Страница входа пользователя."""
+    if request.method == 'POST':
+        name = request.form.get('name')
+        password = request.form.get('password')
 
-def find_users_with_common_interests(user_id):
-    """Поиск пользователей с общими интересами."""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
+        if not name or not password:
+            return "Имя и пароль обязательны.", 400
 
-    # Получение интересов текущего пользователя
-    cursor.execute("SELECT interests FROM users WHERE id = ?", (user_id,))
-    user_interests = cursor.fetchone()
-    if not user_interests:
-        return []
+        try:
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            cursor.execute("SELECT password FROM users WHERE name = ?", (name,))
+            user = cursor.fetchone()
+            cursor.close()
+            conn.close()
+        except sqlite3.Error as e:
+            return f"Ошибка базы данных: {e}", 500
 
-    user_interests = set(user_interests[0].split(','))
+        if user and check_password_hash(user[0], password):
+            session['username'] = name
+            return redirect(url_for('home'))
+        else:
+            return "Неверное имя пользователя или пароль.", 400
+    return render_template('login.html')
 
-    # Поиск других пользователей с совпадающими интересами
-    cursor.execute("SELECT id, name, interests FROM users WHERE id != ?", (user_id,))
-    all_users = cursor.fetchall()
-
-    matches = []
-    for other_id, other_name, other_interests in all_users:
-        if not other_interests:
-            continue
-        other_interests_set = set(other_interests.split(','))
-        common_interests = user_interests.intersection(other_interests_set)
-        if common_interests:
-            matches.append({
-                'id': other_id,
-                'name': other_name,
-                'common_interests': ', '.join(common_interests)
-            })
-
-    cursor.close()
-    conn.close()
-    return matches
-
-@app.route('/close_chat/<int:user_id>', methods=['POST'])
-def close_chat(user_id):
-    """Закрытие чата."""
+@app.route('/find_matches')
+def find_matches():
+    """Страница 'Найти совпадения'."""
     username = session.get("username")
     if not username:
         return redirect(url_for('login'))
 
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
-
-    # Получаем ID текущего пользователя
     cursor.execute("SELECT id FROM users WHERE name = ?", (username,))
-    sender_id = cursor.fetchone()[0]
-
-    # Проверка, существует ли чат между текущим пользователем и получателем
-    cursor.execute("""
-        SELECT id FROM chats
-        WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
-    """, (sender_id, user_id, user_id, sender_id))
-    chat = cursor.fetchone()
-
-    if chat:
-        # Обновляем статус чата как закрытый
-        cursor.execute("""
-            UPDATE chats
-            SET is_closed = 1
-            WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
-        """, (sender_id, user_id, user_id, sender_id))
-        conn.commit()
-
+    user_id = cursor.fetchone()[0]
     cursor.close()
     conn.close()
 
-    return redirect(url_for('chat', user_id=user_id))
+    matches = find_users_with_common_interests(user_id)
+    return render_template('find_matches.html', title="Найти совпадения", matches=matches)
 
 @app.route('/chat/<int:user_id>')
 def chat(user_id):
@@ -253,80 +227,6 @@ def chat(user_id):
     conn.close()
 
     return render_template('chat.html', user_id=user_id, chat_closed=chat_closed, messages=messages)
-
-
-
-@socketio.on('join')
-def handle_join(data):
-    """Присоединение к комнате."""
-    user_id = session.get("username")
-    if user_id:
-        join_room(f"user_{user_id}")
-
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """Страница входа пользователя."""
-    if request.method == 'POST':
-        name = request.form.get('name')
-        password = request.form.get('password')
-
-        if not name or not password:
-            return "Имя и пароль обязательны.", 400
-
-        try:
-            conn = sqlite3.connect(DATABASE)
-            cursor = conn.cursor()
-            cursor.execute("SELECT password FROM users WHERE name = ?", (name,))
-            user = cursor.fetchone()
-            cursor.close()
-            conn.close()
-        except sqlite3.Error as e:
-            return f"Ошибка базы данных: {e}", 500
-
-        if user and check_password_hash(user[0], password):
-            session['username'] = name
-            return redirect(url_for('home'))
-        else:
-            return "Неверное имя пользователя или пароль.", 400
-    return render_template('login.html')
-
-@app.route('/rules')
-def rules():
-    """Страница с правилами использования."""
-    return render_template('rules.html', title="Правила использования")
-
-
-@app.route('/how_it_works')
-def how_it_works():
-    """Страница 'Как это работает'."""
-    return render_template('how_it_works.html', title="Как это работает")
-
-
-@app.route('/how_it_built')
-def how_it_built():
-    """Страница 'Как это устроено'."""
-    return render_template('how_it_built.html', title="Как это устроено")
-
-
-@app.route('/find_matches')
-def find_matches():
-    """Страница 'Найти совпадения'."""
-    username = session.get("username")
-    if not username:
-        return redirect(url_for('login'))
-
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM users WHERE name = ?", (username,))
-    user_id = cursor.fetchone()[0]
-    cursor.close()
-    conn.close()
-
-    matches = find_users_with_common_interests(user_id)
-    return render_template('find_matches.html', title="Найти совпадения", matches=matches)
-
-
 
 @app.route('/logout')
 def logout():
@@ -387,7 +287,7 @@ def handle_send_message(data):
     conn.close()
 
     # Отправка сообщения другому пользователю
-    emit('receive_message', {'sender': sender_name, 'message': message}, room=f"user_{receiver_id}")
+emit('receive_message', {'sender': sender_name, 'message': message}, room=receiver_id)
 
 
 
