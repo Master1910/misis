@@ -1,41 +1,31 @@
 document.addEventListener("DOMContentLoaded", () => {
     console.log("JavaScript загружен и работает!");
 
-    // Анимация плавного появления содержимого
+    // Обрабатываем анимацию плавного появления содержимого
     const fadeContainers = document.querySelectorAll('.fade');
     fadeContainers.forEach(container => {
         container.style.opacity = 0;
         setTimeout(() => (container.style.opacity = 1), 50);
     });
 
-    // Подключение WebSocket и управление чатом
-    const socket = io.connect();
-
+    // Инициализация истории чата
     const chatHistory = document.querySelector(".chat-history");
     const chatForm = document.querySelector(".chat-form");
     const chatInput = document.querySelector(".chat-input");
 
     if (chatForm && chatHistory && chatInput) {
-        // Подключение к комнате
-        socket.emit('join', { receiver: "{{ target_user }}" });
-
-        // Отправка сообщения
         chatForm.addEventListener("submit", (event) => {
             event.preventDefault();
             const messageText = chatInput.value.trim();
             if (messageText) {
-                socket.emit('send_message', { 
-                    receiver: "{{ target_user }}", 
-                    message: messageText 
-                });
                 addMessageToChat("Вы", messageText, true);
                 chatInput.value = "";
-            }
-        });
 
-        // Получение нового сообщения
-        socket.on('receive_message', (data) => {
-            addMessageToChat(data.sender, data.message, false);
+                // Имитируем ответ от бота
+                setTimeout(() => {
+                    addMessageToChat("Бот", "Ваше сообщение обработано!", false);
+                }, 1000);
+            }
         });
     }
 
@@ -56,25 +46,23 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isUser) {
             message.style.alignSelf = "flex-end"; // Сообщения пользователя справа
         } else {
-            message.style.alignSelf = "flex-start"; // Сообщения собеседника слева
+            message.style.alignSelf = "flex-start"; // Сообщения бота слева
         }
 
         chatHistory.appendChild(message);
         scrollChatToBottom();
     }
+});
 
-    // Боковая панель
+// Функция открытия/закрытия бокового меню
+function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.getElementById('main-content');
-
-    // Функция открытия/закрытия боковой панели
-    window.toggleSidebar = function () {
-        if (sidebar.style.width === "250px") {
-            sidebar.style.width = "0";
-            mainContent.classList.remove('menu-open');
-        } else {
-            sidebar.style.width = "250px";
-            mainContent.classList.add('menu-open');
-        }
-    };
-});
+    if (sidebar.style.width === "250px") {
+        sidebar.style.width = "0";
+        mainContent.classList.remove('menu-open');
+    } else {
+        sidebar.style.width = "250px";
+        mainContent.classList.add('menu-open');
+    }
+}
