@@ -250,35 +250,27 @@ def chat(user_id):
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
 
-        # Получаем ID текущего пользователя
-        cursor.execute("SELECT id FROM users WHERE name = ?", (current_user,))
-        current_user_id = cursor.fetchone()[0]
-
-        # Проверяем, существует ли собеседник
+        # Проверяем, существует ли пользователь
         cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
         target_user = cursor.fetchone()
         if not target_user:
             return "Пользователь не найден.", 404
 
-        # Загружаем историю сообщений
+        # Получаем историю сообщений
         cursor.execute("""
             SELECT sender_id, message, timestamp 
             FROM messages 
-            WHERE (sender_id = ? AND receiver_id = ?)
-               OR (sender_id = ? AND receiver_id = ?)
+            WHERE (sender_id = (SELECT id FROM users WHERE name = ?) AND receiver_id = ?)
+               OR (sender_id = ? AND receiver_id = (SELECT id FROM users WHERE name = ?))
             ORDER BY timestamp
-        """, (current_user_id, user_id, user_id, current_user_id))
+        """, (current_user, user_id, user_id, current_user))
         messages = cursor.fetchall()
 
         cursor.close()
         conn.close()
 
-        return render_template(
-            'chat.html', 
-            messages=messages, 
-            target_user=target_user[0], 
-            current_user=current_user
-        )
+        return render_template('chat.html', messages=messages, target_user=target_user[0])
+
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка при загрузке чата.", 500
@@ -307,10 +299,16 @@ def internal_server_error(e):
 # --- WebSocket ---
 @socketio.on('send_message')
 def handle_message(data):
-    """Отправка сообщения в чат."""
-    room = data['room']
-    sender = data['sender']
+    """Отправка сообщения в комнату."""
+    sender = session.get("username")
+    receiver = data['receiver']
     message = data['message']
+
+    if not sender or not receiver or not message:
+        return
+
+    # Создаем уникальное имя комнаты
+    room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
 
     # Сохраняем сообщение в базе данных
     conn = sqlite3.connect(DATABASE)
@@ -319,10 +317,10 @@ def handle_message(data):
         INSERT INTO messages (sender_id, receiver_id, message)
         VALUES (
             (SELECT id FROM users WHERE name = ?),
-            (SELECT id FROM users WHERE id = ?),
+            (SELECT id FROM users WHERE name = ?),
             ?
         )
-    """, (sender, room.split('_')[2], message))  # Receiver ID - из имени комнаты
+    """, (sender, receiver, message))
     conn.commit()
     cursor.close()
     conn.close()
@@ -331,17 +329,29 @@ def handle_message(data):
     emit('receive_message', {'sender': sender, 'message': message}, room=room)
 
 
+@socketio.on('join')
+def on_join(data):
+    """Подключение к уникальной комнате."""
+    sender = session.get("username")
+    receiver = data['receiver']
+    
+    if not sender or not receiver:
+        return
+
+    # Создаем уникальное имя комнаты для пары пользователей
+    room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
+    join_room(room)
+    emit('room_joined', {'room': room}, room=room)
+
+
+
+
 
 @socketio.on('join')
 def on_join(data):
-    """Подключение пользователя к уникальной комнате."""
-    room = data['room']
-    username = data['username']
-
-    join_room(room)
-    emit('user_joined', {'username': username}, room=room)
-
-
+    """Подключение к комнате."""
+    username = session.get("username")
+    join_room(username)
 
 # --- Запуск ---
 if __name__ == '__main__':
