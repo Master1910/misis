@@ -250,27 +250,35 @@ def chat(user_id):
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
 
-        # Проверяем, существует ли пользователь
+        # Получаем ID текущего пользователя
+        cursor.execute("SELECT id FROM users WHERE name = ?", (current_user,))
+        current_user_id = cursor.fetchone()[0]
+
+        # Проверяем, существует ли собеседник
         cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
         target_user = cursor.fetchone()
         if not target_user:
             return "Пользователь не найден.", 404
 
-        # Получаем историю сообщений
+        # Загружаем историю сообщений
         cursor.execute("""
             SELECT sender_id, message, timestamp 
             FROM messages 
-            WHERE (sender_id = (SELECT id FROM users WHERE name = ?) AND receiver_id = ?)
-               OR (sender_id = ? AND receiver_id = (SELECT id FROM users WHERE name = ?))
+            WHERE (sender_id = ? AND receiver_id = ?)
+               OR (sender_id = ? AND receiver_id = ?)
             ORDER BY timestamp
-        """, (current_user, user_id, user_id, current_user))
+        """, (current_user_id, user_id, user_id, current_user_id))
         messages = cursor.fetchall()
 
         cursor.close()
         conn.close()
 
-        return render_template('chat.html', messages=messages, target_user=target_user[0])
-
+        return render_template(
+            'chat.html', 
+            messages=messages, 
+            target_user=target_user[0], 
+            current_user=current_user
+        )
     except sqlite3.Error as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка при загрузке чата.", 500
@@ -307,26 +315,34 @@ def handle_message(data):
     if not sender or not receiver or not message:
         return
 
-    # Создаем уникальное имя комнаты
-    room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
+    try:
+        # Получаем ID пользователей
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
 
-    # Сохраняем сообщение в базе данных
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO messages (sender_id, receiver_id, message)
-        VALUES (
-            (SELECT id FROM users WHERE name = ?),
-            (SELECT id FROM users WHERE name = ?),
-            ?
-        )
-    """, (sender, receiver, message))
-    conn.commit()
-    cursor.close()
-    conn.close()
+        cursor.execute("SELECT id FROM users WHERE name = ?", (sender,))
+        sender_id = cursor.fetchone()[0]
 
-    # Отправляем сообщение в комнату
-    emit('receive_message', {'sender': sender, 'message': message}, room=room)
+        cursor.execute("SELECT id FROM users WHERE name = ?", (receiver,))
+        receiver_id = cursor.fetchone()[0]
+
+        # Сохраняем сообщение в базе данных
+        cursor.execute("""
+            INSERT INTO messages (sender_id, receiver_id, message)
+            VALUES (?, ?, ?)
+        """, (sender_id, receiver_id, message))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # Создаем уникальное имя комнаты
+        room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
+
+        # Отправляем сообщение в комнату
+        emit('receive_message', {'sender': sender, 'message': message}, room=room)
+    except sqlite3.Error as e:
+        print(f"Ошибка базы данных: {e}")
+
 
 
 @socketio.on('join')
@@ -338,10 +354,28 @@ def on_join(data):
     if not sender or not receiver:
         return
 
-    # Создаем уникальное имя комнаты для пары пользователей
-    room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
+    # Получаем ID пользователей из базы
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM users WHERE name = ?", (sender,))
+        sender_id = cursor.fetchone()[0]
+
+        cursor.execute("SELECT id FROM users WHERE name = ?", (receiver,))
+        receiver_id = cursor.fetchone()[0]
+
+        cursor.close()
+        conn.close()
+    except sqlite3.Error as e:
+        print(f"Ошибка базы данных: {e}")
+        return
+
+    # Создаем уникальное имя комнаты
+    room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
     join_room(room)
     emit('room_joined', {'room': room}, room=room)
+
 
 # --- Запуск ---
 if __name__ == '__main__':
