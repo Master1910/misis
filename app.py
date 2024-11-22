@@ -318,8 +318,7 @@ def handle_message(data):
         VALUES (
             (SELECT id FROM users WHERE name = ?),
             (SELECT id FROM users WHERE name = ?),
-            ?
-        )
+            ?)
     """, (sender, receiver, message))
     conn.commit()
     cursor.close()
@@ -329,29 +328,22 @@ def handle_message(data):
     emit('receive_message', {'sender': sender, 'message': message}, room=room)
 
 
+
 @socketio.on('join')
 def on_join(data):
     """Подключение к уникальной комнате."""
     sender = session.get("username")
-    receiver = data['receiver']
+    receiver = data.get('receiver')  # Получаем имя собеседника
     
     if not sender or not receiver:
         return
 
-    # Создаем уникальное имя комнаты для пары пользователей
+    # Создаем уникальное имя комнаты
     room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
     join_room(room)
+
     emit('room_joined', {'room': room}, room=room)
 
-
-
-
-
-@socketio.on('join')
-def on_join(data):
-    """Подключение к комнате."""
-    username = session.get("username")
-    join_room(username)
 
 # --- Запуск ---
 if __name__ == '__main__':
