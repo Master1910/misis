@@ -37,15 +37,17 @@
         const message = messageInput.value.trim();
 
         if (message) {
+            // Отправляем сообщение на сервер с идентификатором получателя (target_user_id)
             socket.emit('send_message', { 
-                receiver: "{{ target_user }}", 
+                receiver: "{{ target_user_id }}",  // Передаем ID пользователя для правильной маршрутизации сообщения
                 message: message 
             });
-            messageInput.value = '';
+            messageInput.value = ''; // Очистить поле ввода
         }
     };
 
     socket.on('receive_message', function(data) {
+        // Когда приходит новое сообщение, добавляем его в историю чата
         const newMessage = document.createElement('div');
         newMessage.classList.add('message');
         newMessage.innerHTML = `
@@ -53,7 +55,9 @@
             <span class="timestamp">${new Date().toLocaleString()}</span>
         `;
         chatHistory.appendChild(newMessage);
-        chatHistory.scrollTop = chatHistory.scrollHeight; // Автопрокрутка вниз
+
+        // Автопрокрутка чата вниз
+        chatHistory.scrollTop = chatHistory.scrollHeight;
     });
 </script>
 {% endblock %}
