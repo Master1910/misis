@@ -307,74 +307,40 @@ def internal_server_error(e):
 # --- WebSocket ---
 @socketio.on('send_message')
 def handle_message(data):
-    """Отправка сообщения в комнату."""
-    sender = session.get("username")
-    receiver = data['receiver']
+    """Отправка сообщения в чат."""
+    room = data['room']
+    sender = data['sender']
     message = data['message']
 
-    if not sender or not receiver or not message:
-        return
+    # Сохраняем сообщение в базе данных
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO messages (sender_id, receiver_id, message)
+        VALUES (
+            (SELECT id FROM users WHERE name = ?),
+            (SELECT id FROM users WHERE id = ?),
+            ?
+        )
+    """, (sender, room.split('_')[2], message))  # Receiver ID - из имени комнаты
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-    try:
-        # Получаем ID пользователей
-        conn = sqlite3.connect(DATABASE)
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT id FROM users WHERE name = ?", (sender,))
-        sender_id = cursor.fetchone()[0]
-
-        cursor.execute("SELECT id FROM users WHERE name = ?", (receiver,))
-        receiver_id = cursor.fetchone()[0]
-
-        # Сохраняем сообщение в базе данных
-        cursor.execute("""
-            INSERT INTO messages (sender_id, receiver_id, message)
-            VALUES (?, ?, ?)
-        """, (sender_id, receiver_id, message))
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        # Создаем уникальное имя комнаты
-        room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
-
-        # Отправляем сообщение в комнату
-        emit('receive_message', {'sender': sender, 'message': message}, room=room)
-    except sqlite3.Error as e:
-        print(f"Ошибка базы данных: {e}")
+    # Отправляем сообщение в комнату
+    emit('receive_message', {'sender': sender, 'message': message}, room=room)
 
 
 
 @socketio.on('join')
 def on_join(data):
-    """Подключение к уникальной комнате."""
-    sender = session.get("username")
-    receiver = data['receiver']
-    
-    if not sender or not receiver:
-        return
+    """Подключение пользователя к уникальной комнате."""
+    room = data['room']
+    username = data['username']
 
-    # Получаем ID пользователей из базы
-    try:
-        conn = sqlite3.connect(DATABASE)
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT id FROM users WHERE name = ?", (sender,))
-        sender_id = cursor.fetchone()[0]
-
-        cursor.execute("SELECT id FROM users WHERE name = ?", (receiver,))
-        receiver_id = cursor.fetchone()[0]
-
-        cursor.close()
-        conn.close()
-    except sqlite3.Error as e:
-        print(f"Ошибка базы данных: {e}")
-        return
-
-    # Создаем уникальное имя комнаты
-    room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
     join_room(room)
-    emit('room_joined', {'room': room}, room=room)
+    emit('user_joined', {'username': username}, room=room)
+
 
 
 # --- Запуск ---
