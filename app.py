@@ -343,16 +343,6 @@ def on_join(data):
     join_room(room)
     emit('room_joined', {'room': room}, room=room)
 
-
-
-
-
-@socketio.on('join')
-def on_join(data):
-    """Подключение к комнате."""
-    username = session.get("username")
-    join_room(username)
-
 # --- Запуск ---
 if __name__ == '__main__':
     init_db()
