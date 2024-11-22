@@ -26,6 +26,7 @@
 </div>
 
 <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.2/socket.io.min.js"></script>
 <script>
     const socket = io.connect();
     const chatForm = document.getElementById('chat-form');
@@ -37,17 +38,17 @@
         const message = messageInput.value.trim();
 
         if (message) {
-            // Отправляем сообщение на сервер с идентификатором получателя (target_user_id)
+            // Отправляем сообщение на сервер
             socket.emit('send_message', { 
-                receiver: "{{ target_user_id }}",  // Передаем ID пользователя для правильной маршрутизации сообщения
+                receiver: "{{ target_user_id }}",  // Идентификатор получателя
                 message: message 
             });
-            messageInput.value = ''; // Очистить поле ввода
+            messageInput.value = ''; // Очистка поля ввода
         }
     };
 
+    // При получении нового сообщения добавляем его в чат
     socket.on('receive_message', function(data) {
-        // Когда приходит новое сообщение, добавляем его в историю чата
         const newMessage = document.createElement('div');
         newMessage.classList.add('message');
         newMessage.innerHTML = `
@@ -56,7 +57,7 @@
         `;
         chatHistory.appendChild(newMessage);
 
-        // Автопрокрутка чата вниз
+        // Автопрокрутка вниз
         chatHistory.scrollTop = chatHistory.scrollHeight;
     });
 </script>
