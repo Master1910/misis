@@ -8,11 +8,14 @@
         <div class="chat-history" id="chat-history">
             {% for sender_id, message, timestamp in messages %}
                 <div class="message {% if sender_id == current_user_id %}my-message{% else %}their-message{% endif %}">
-                    <p><strong>{{ sender_id if sender_id == current_user_id else target_user }}:</strong> {{ message }}</p>
+                    <p><strong>{{ 'Вы' if sender_id == current_user_id else target_user }}:</strong> {{ message }}</p>
                     <span class="timestamp">{{ timestamp }}</span>
                 </div>
             {% endfor %}
         </div>
+
+        <!-- Уведомления -->
+        <div id="chat-notifications"></div>
 
         <!-- Форма отправки сообщения -->
         <form id="chat-form" class="chat-form">
@@ -29,18 +32,31 @@
 </div>
 
 <!-- Подключаем скрипты -->
-<script src="{{ url_for('static', filename='scripts.js') }}"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.2/socket.io.min.js"></script>
 <script>
     const socket = io.connect();
     const chatForm = document.getElementById('chat-form');
     const messageInput = document.getElementById('message');
     const chatHistory = document.getElementById('chat-history');
+    const chatNotifications = document.getElementById('chat-notifications');
+
+    const room = `chat_{{ min(current_user_id, target_user_id) }}_{{ max(current_user_id, target_user_id) }}`;
 
     // Подключаемся к комнате
-    socket.emit('join', { receiver: "{{ target_user }}" });
+    socket.emit('join', { room, username: "{{ current_user }}" });
 
-    // Обработка отправки формы
+    // Обработка входа в комнату
+    socket.on('user_joined', function(data) {
+        const notification = document.createElement('div');
+        notification.classList.add('notification');
+        notification.textContent = `${data.username} подключился. Вы можете начать общение.`;
+        chatNotifications.appendChild(notification);
+
+        // Автопрокрутка
+        chatNotifications.scrollTop = chatNotifications.scrollHeight;
+    });
+
+    // Обработка отправки сообщения
     chatForm.onsubmit = function(e) {
         e.preventDefault();
         const message = messageInput.value.trim();
@@ -48,7 +64,8 @@
         if (message) {
             // Отправляем сообщение на сервер
             socket.emit('send_message', { 
-                receiver: "{{ target_user }}",  // Имя получателя
+                room, 
+                sender: "{{ current_user }}", 
                 message: message 
             });
 
