@@ -4,14 +4,17 @@
 <div class="container">
     <h2>Чат с {{ target_user }}</h2>
     <div class="chat-container">
+        <!-- История сообщений -->
         <div class="chat-history" id="chat-history">
             {% for sender_id, message, timestamp in messages %}
-                <div class="message">
-                    <p><strong>{{ sender_id }}:</strong> {{ message }}</p>
+                <div class="message {% if sender_id == current_user_id %}my-message{% else %}their-message{% endif %}">
+                    <p><strong>{{ sender_id if sender_id == current_user_id else target_user }}:</strong> {{ message }}</p>
                     <span class="timestamp">{{ timestamp }}</span>
                 </div>
             {% endfor %}
         </div>
+
+        <!-- Форма отправки сообщения -->
         <form id="chat-form" class="chat-form">
             <input 
                 type="text" 
@@ -25,6 +28,7 @@
     </div>
 </div>
 
+<!-- Подключаем скрипты -->
 <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.2/socket.io.min.js"></script>
 <script>
@@ -33,6 +37,10 @@
     const messageInput = document.getElementById('message');
     const chatHistory = document.getElementById('chat-history');
 
+    // Подключаемся к комнате
+    socket.emit('join', { receiver: "{{ target_user }}" });
+
+    // Обработка отправки формы
     chatForm.onsubmit = function(e) {
         e.preventDefault();
         const message = messageInput.value.trim();
@@ -40,17 +48,29 @@
         if (message) {
             // Отправляем сообщение на сервер
             socket.emit('send_message', { 
-                receiver: "{{ target_user_id }}",  // Идентификатор получателя
+                receiver: "{{ target_user }}",  // Имя получателя
                 message: message 
             });
-            messageInput.value = ''; // Очистка поля ввода
+
+            // Добавляем сообщение в интерфейс
+            const newMessage = document.createElement('div');
+            newMessage.classList.add('message', 'my-message');
+            newMessage.innerHTML = `
+                <p><strong>Вы:</strong> ${message}</p>
+                <span class="timestamp">${new Date().toLocaleString()}</span>
+            `;
+            chatHistory.appendChild(newMessage);
+
+            // Очищаем поле ввода и прокручиваем вниз
+            messageInput.value = '';
+            chatHistory.scrollTop = chatHistory.scrollHeight;
         }
     };
 
-    // При получении нового сообщения добавляем его в чат
+    // Получаем новое сообщение
     socket.on('receive_message', function(data) {
         const newMessage = document.createElement('div');
-        newMessage.classList.add('message');
+        newMessage.classList.add('message', 'their-message');
         newMessage.innerHTML = `
             <p><strong>${data.sender}:</strong> ${data.message}</p>
             <span class="timestamp">${new Date().toLocaleString()}</span>
