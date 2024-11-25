@@ -2,11 +2,12 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from flask_session import Session
 from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import os
 import redis
 
-# Создание приложения Flask
+# --- Конфигурация приложения ---
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 
@@ -18,68 +19,80 @@ app.config['SESSION_KEY_PREFIX'] = 'session:'
 redis_url = 'redis://red-csud6tilqhvc73clb1q0:6379'
 app.config['SESSION_REDIS'] = redis.StrictRedis.from_url(redis_url)
 
-# Инициализация сессии
+# Инициализация сессий
 Session(app)
 
-# Инициализация SocketIO
+# Инициализация WebSocket
 socketio = SocketIO(app, manage_session=False)
 
-# Путь к файлу базы данных
-DATABASE = os.path.join(os.getcwd(), "users.db")
+# --- Конфигурация PostgreSQL ---
+def get_db_connection():
+    """Получение соединения с PostgreSQL."""
+    return psycopg2.connect(
+        dbname='userdb_dmgu',
+        user='userdb_dmgu_user',
+        password='WAlSm47o7E4Up5i97nk6scM6PWL9s6g3',
+        host='dpg-ct2bsn9u0jms73egg9fg-a',
+        port='5432'
+    )
 
 # --- Утилитарные функции ---
 def init_db():
     """Инициализация базы данных."""
-    if not os.path.exists(DATABASE):
-        print("Создание базы данных...")
-        try:
-            conn = sqlite3.connect(DATABASE)
-            cursor = conn.cursor()
-            cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-                               id INTEGER PRIMARY KEY AUTOINCREMENT,
-                               name TEXT UNIQUE NOT NULL,
-                               password TEXT NOT NULL,
-                               institute TEXT,
-                               interests TEXT
-                            )''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS interests (
-                               user_id INTEGER,
-                               interest TEXT,
-                               FOREIGN KEY (user_id) REFERENCES users (id)
-                            )''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
-                               id INTEGER PRIMARY KEY AUTOINCREMENT,
-                               sender_id INTEGER,
-                               receiver_id INTEGER,
-                               message TEXT,
-                               timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                               FOREIGN KEY (sender_id) REFERENCES users (id),
-                               FOREIGN KEY (receiver_id) REFERENCES users (id)
-                            )''')
-            conn.commit()
-            cursor.close()
-            conn.close()
-            print("База данных успешно создана")
-        except sqlite3.Error as e:
-            print(f"Ошибка при создании базы данных: {e}")
-    else:
-        print("База данных уже существует")
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Создание таблиц
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                institute TEXT,
+                interests TEXT
+            );
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS interests (
+                user_id INTEGER REFERENCES users(id),
+                interest TEXT
+            );
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS messages (
+                id SERIAL PRIMARY KEY,
+                sender_id INTEGER REFERENCES users(id),
+                receiver_id INTEGER REFERENCES users(id),
+                message TEXT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        ''')
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("База данных успешно инициализирована.")
+    except Exception as e:
+        print(f"Ошибка при инициализации базы данных: {e}")
+
 
 # --- Маршруты ---
 @app.route('/')
 def home():
     """Главная страница."""
     username = session.get("username")
-    init_db()
 
     try:
-        conn = sqlite3.connect(DATABASE)
+        conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users")
+        cursor.execute("SELECT COUNT(*) FROM users;")
         user_count = cursor.fetchone()[0]
         cursor.close()
         conn.close()
-    except sqlite3.Error as e:
+    except Exception as e:
         print(f"Ошибка при выполнении запроса: {e}")
         user_count = 0
 
@@ -103,13 +116,13 @@ def register():
         hashed_password = generate_password_hash(password)
 
         try:
-            conn = sqlite3.connect(DATABASE)
+            conn = get_db_connection()
             cursor = conn.cursor()
 
-            # Добавление пользователя в таблицу `users`
+            # Добавление пользователя
             cursor.execute("""
                 INSERT INTO users (name, password, institute, interests) 
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s);
             """, (username, hashed_password, institute, interests))
 
             conn.commit()
@@ -118,47 +131,43 @@ def register():
 
             session['username'] = username
             return redirect(url_for('home'))
-        except sqlite3.IntegrityError:
+        except psycopg2.IntegrityError:
             error = "Имя пользователя уже существует. Попробуйте другое."
             return render_template('register.html', title="Регистрация", error=error)
 
     return render_template('register.html', title="Регистрация")
 
-
 def find_users_with_common_interests(user_id):
     """Поиск пользователей с общими интересами."""
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     # Получение интересов текущего пользователя
-    cursor.execute("SELECT interests FROM users WHERE id = ?", (user_id,))
+    cursor.execute("SELECT interests FROM users WHERE id = %s;", (user_id,))
     user_interests = cursor.fetchone()
     if not user_interests:
         return []
 
-    user_interests = set(user_interests[0].split(','))
+    user_interests = set(user_interests['interests'].split(','))
 
     # Поиск других пользователей с совпадающими интересами
-    cursor.execute("SELECT id, name, interests FROM users WHERE id != ?", (user_id,))
+    cursor.execute("SELECT id, name, interests FROM users WHERE id != %s;", (user_id,))
     all_users = cursor.fetchall()
 
     matches = []
-    for other_id, other_name, other_interests in all_users:
-        if not other_interests:
-            continue
-        other_interests_set = set(other_interests.split(','))
+    for other_user in all_users:
+        other_interests_set = set(other_user['interests'].split(','))
         common_interests = user_interests.intersection(other_interests_set)
         if common_interests:
             matches.append({
-                'id': other_id,
-                'name': other_name,
+                'id': other_user['id'],
+                'name': other_user['name'],
                 'common_interests': ', '.join(common_interests)
             })
 
     cursor.close()
     conn.close()
     return matches
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -213,29 +222,21 @@ def find_matches():
         return redirect(url_for('login'))
 
     try:
-        conn = sqlite3.connect(DATABASE)
+        conn = get_db_connection()
         cursor = conn.cursor()
 
         # Получаем ID текущего пользователя
-        cursor.execute("SELECT id FROM users WHERE name = ?", (username,))
+        cursor.execute("SELECT id FROM users WHERE name = %s;", (username,))
         user_row = cursor.fetchone()
         if not user_row:
             return "Пользователь не найден в базе данных.", 404
 
         user_id = user_row[0]
-        cursor.close()
-        conn.close()
-
-        # Ищем совпадения по интересам
         matches = find_users_with_common_interests(user_id)
 
-        return render_template(
-            'find_matches.html', 
-            title="Найти совпадения", 
-            matches=matches
-        )
+        return render_template('find_matches.html', title="Найти совпадения", matches=matches)
 
-    except sqlite3.Error as e:
+    except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Произошла ошибка при поиске совпадений.", 500
 #для создания чата
@@ -310,23 +311,25 @@ def handle_message(data):
     # Создаем уникальное имя комнаты
     room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
 
-    # Сохраняем сообщение в базе данных
-    conn = sqlite3.connect(DATABASE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO messages (sender_id, receiver_id, message)
-        VALUES (
-            (SELECT id FROM users WHERE name = ?),
-            (SELECT id FROM users WHERE name = ?),
-            ?
-        )
-    """, (sender, receiver, message))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    # Отправляем сообщение в комнату
-    emit('receive_message', {'sender': sender, 'message': message}, room=room)
+        # Сохраняем сообщение
+        cursor.execute("""
+            INSERT INTO messages (sender_id, receiver_id, message)
+            VALUES (
+                (SELECT id FROM users WHERE name = %s),
+                (SELECT id FROM users WHERE name = %s),
+                %s
+            );
+        """, (sender, receiver, message))
+        conn.commit()
+
+        emit('receive_message', {'sender': sender, 'message': message}, room=room)
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @socketio.on('join')
