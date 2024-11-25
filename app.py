@@ -26,7 +26,7 @@ Session(app)
 socketio = SocketIO(app, manage_session=False)
 
 # --- Конфигурация PostgreSQL ---
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@postgres.railway.internal:5432/railway")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@autorack.proxy.rlwy.net:54163/railway")
 
 def get_db_connection():
     """Получение соединения с PostgreSQL."""
@@ -36,7 +36,6 @@ def get_db_connection():
     except Exception as e:
         print(f"Ошибка подключения к базе данных: {e}")
         return None
-
 # --- Утилитарные функции ---
 def init_db():
     """Инициализация базы данных."""
