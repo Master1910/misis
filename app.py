@@ -31,27 +31,25 @@ DATABASE_URL = "mysql://root:lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym@junction.proxy.rlw
 
 # --- Утилитарные функции ---
 def get_db_connection():
-    """Получение соединения с базой данных MySQL."""
     try:
         conn = mysql.connector.connect(
             host="junction.proxy.rlwy.net",
+            port=42004,
             user="root",
             password="lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym",
-            database="railway",
-            port=42004
+            database="railway"
         )
         return conn
     except mysql.connector.Error as e:
-        print(f"Ошибка подключения к базе данных: {e}")
+        print(f"Ошибка подключения к MySQL: {e}")
         return None
-
 
 def init_db():
     """Инициализация базы данных."""
     try:
         conn = get_db_connection()
         if not conn:
-            print("Не удалось подключиться к базе данных при инициализации.")
+            print("Не удалось подключиться к базе данных.")
             return
 
         cursor = conn.cursor()
@@ -66,6 +64,7 @@ def init_db():
                 interests TEXT
             );
         ''')
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS interests (
                 user_id INT,
@@ -73,6 +72,7 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
         ''')
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS messages (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -89,7 +89,7 @@ def init_db():
         cursor.close()
         conn.close()
         print("База данных успешно инициализирована.")
-    except Exception as e:
+    except mysql.connector.Error as e:
         print(f"Ошибка при инициализации базы данных: {e}")
 
 
