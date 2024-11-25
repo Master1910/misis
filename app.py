@@ -2,10 +2,9 @@ from flask import Flask, render_template, request, redirect, url_for, session
 from flask_session import Session
 from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
-import psycopg2
+import mysql.connector
 import os
 import redis
-import sqlite3
 
 # --- Конфигурация приложения ---
 app = Flask(__name__)
@@ -27,10 +26,26 @@ Session(app)
 # Инициализация WebSocket
 socketio = SocketIO(app, manage_session=False)
 
-# --- Конфигурация PostgreSQL ---
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@autorack.proxy.rlwy.net:54163/railway")
+# --- Конфигурация MySQL ---
+DATABASE_URL = "mysql://root:lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym@junction.proxy.rlwy.net:42004/railway"
 
 # --- Утилитарные функции ---
+def get_db_connection():
+    """Получение соединения с базой данных MySQL."""
+    try:
+        conn = mysql.connector.connect(
+            host="junction.proxy.rlwy.net",
+            user="root",
+            password="lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym",
+            database="railway",
+            port=42004
+        )
+        return conn
+    except mysql.connector.Error as e:
+        print(f"Ошибка подключения к базе данных: {e}")
+        return None
+
+
 def init_db():
     """Инициализация базы данных."""
     try:
@@ -42,28 +57,31 @@ def init_db():
         cursor = conn.cursor()
 
         # Создание таблиц
-        cursor.execute(''' 
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                name TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                institute TEXT,
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                institute VARCHAR(255),
                 interests TEXT
             );
         ''')
-        cursor.execute(''' 
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS interests (
-                user_id INTEGER REFERENCES users(id),
-                interest TEXT
+                user_id INT,
+                interest VARCHAR(255),
+                FOREIGN KEY (user_id) REFERENCES users(id)
             );
         ''')
-        cursor.execute(''' 
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS messages (
-                id SERIAL PRIMARY KEY,
-                sender_id INTEGER REFERENCES users(id),
-                receiver_id INTEGER REFERENCES users(id),
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                sender_id INT,
+                receiver_id INT,
                 message TEXT,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (sender_id) REFERENCES users(id),
+                FOREIGN KEY (receiver_id) REFERENCES users(id)
             );
         ''')
 
@@ -73,15 +91,6 @@ def init_db():
         print("База данных успешно инициализирована.")
     except Exception as e:
         print(f"Ошибка при инициализации базы данных: {e}")
-
-
-def get_db_connection():
-    try:
-        conn = sqlite3.connect('users.db')
-        return conn
-    except sqlite3.Error as e:
-        print(f"Ошибка подключения к SQLite: {e}")
-        return None
 
 
 @app.route('/init_db')
@@ -148,7 +157,7 @@ def register():
 
             session['username'] = username
             return redirect(url_for('home'))
-        except psycopg2.IntegrityError:
+        except mysql.connector.IntegrityError:
             error = "Имя пользователя уже существует. Попробуйте другое."
             return render_template('register.html', title="Регистрация", error=error)
         except Exception as e:
