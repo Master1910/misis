@@ -43,7 +43,7 @@ def init_db():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Создание таблиц
+        print("Создаём таблицу users...")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -53,14 +53,18 @@ def init_db():
                 interests TEXT
             );
         ''')
+        print("Таблица users создана.")
 
+        print("Создаём таблицу interests...")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS interests (
                 user_id INTEGER REFERENCES users(id),
                 interest TEXT
             );
         ''')
+        print("Таблица interests создана.")
 
+        print("Создаём таблицу messages...")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS messages (
                 id SERIAL PRIMARY KEY,
@@ -70,6 +74,7 @@ def init_db():
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         ''')
+        print("Таблица messages создана.")
 
         conn.commit()
         cursor.close()
