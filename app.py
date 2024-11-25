@@ -3,7 +3,6 @@ from flask_session import Session
 from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
-from psycopg2.extensions import parse_dsn
 import os
 import redis
 
@@ -16,7 +15,9 @@ app.config['SESSION_TYPE'] = 'redis'
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'session:'
-redis_url = 'redis://red-csud6tilqhvc73clb1q0:6379'  # Замените на ваш URL, если он другой
+
+# Получение строки подключения Redis из переменной окружения или дефолтного значения
+redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
 app.config['SESSION_REDIS'] = redis.StrictRedis.from_url(redis_url)
 
 # Инициализация сессий
@@ -28,8 +29,6 @@ socketio = SocketIO(app, manage_session=False)
 # --- Конфигурация PostgreSQL ---
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@autorack.proxy.rlwy.net:54163/railway")
 
-
-
 # --- Утилитарные функции ---
 def init_db():
     """Инициализация базы данных."""
@@ -37,7 +36,6 @@ def init_db():
         conn = get_db_connection()
         if not conn:
             print("Не удалось подключиться к базе данных при инициализации.")
-            print(f"Текущее значение DATABASE_URL: {DATABASE_URL}")
             return
 
         cursor = conn.cursor()
@@ -84,6 +82,7 @@ def get_db_connection():
         return None
     try:
         # Подключение к базе данных
+        print(f"Подключение к базе данных с URL: {db_url}")
         conn = psycopg2.connect(db_url, sslmode='require')
         print("Соединение с базой данных успешно установлено.")
         return conn
