@@ -252,11 +252,11 @@ def chat(user_id):
         return redirect(url_for('login'))
 
     try:
-        conn = sqlite3.connect(DATABASE)
+        conn = get_db_connection()
         cursor = conn.cursor()
 
         # Проверяем, существует ли пользователь
-        cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
+        cursor.execute("SELECT name FROM users WHERE id = %s;", (user_id,))
         target_user = cursor.fetchone()
         if not target_user:
             return "Пользователь не найден.", 404
@@ -265,8 +265,8 @@ def chat(user_id):
         cursor.execute("""
             SELECT sender_id, message, timestamp 
             FROM messages 
-            WHERE (sender_id = (SELECT id FROM users WHERE name = ?) AND receiver_id = ?)
-               OR (sender_id = ? AND receiver_id = (SELECT id FROM users WHERE name = ?))
+            WHERE (sender_id = (SELECT id FROM users WHERE name = %s) AND receiver_id = %s)
+               OR (sender_id = %s AND receiver_id = (SELECT id FROM users WHERE name = %s))
             ORDER BY timestamp
         """, (current_user, user_id, user_id, current_user))
         messages = cursor.fetchall()
@@ -276,7 +276,7 @@ def chat(user_id):
 
         return render_template('chat.html', messages=messages, target_user=target_user[0])
 
-    except sqlite3.Error as e:
+    except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка при загрузке чата.", 500
 
