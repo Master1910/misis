@@ -16,7 +16,7 @@ app.config['SESSION_TYPE'] = 'redis'
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'session:'
-redis_url = 'redis://red-csud6tilqhvc73clb1q0:6379'
+redis_url = 'redis://red-csud6tilqhvc73clb1q0:6379'  # Замените на ваш URL, если он другой
 app.config['SESSION_REDIS'] = redis.StrictRedis.from_url(redis_url)
 
 # Инициализация сессий
@@ -26,32 +26,23 @@ Session(app)
 socketio = SocketIO(app, manage_session=False)
 
 # --- Конфигурация PostgreSQL ---
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@postgres.railway.internal:5432/railway")
+
 def get_db_connection():
     """Получение соединения с PostgreSQL."""
     try:
-        print("Подключаемся к базе данных...")
-        conn = psycopg2.connect(
-            dbname='userdb_dmgu',
-            user='userdb_dmgu_user',
-            password='WAlSm47o7E4Up5i97nk6scM6PWL9s6g3',
-            host='dpg-ct2bsn9u0jms73egg9fg-a',
-            port='5432'
-        )
-        print("Подключение установлено!")
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
         return conn
     except Exception as e:
         print(f"Ошибка подключения к базе данных: {e}")
         return None
-        
+
 # --- Утилитарные функции ---
 def init_db():
     """Инициализация базы данных."""
-    print("Подключаемся к базе данных...")  # Для отладки
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-
-        print("Подключение установлено!")  # Для отладки
 
         # Создание таблиц, если они не существуют
         cursor.execute(''' 
@@ -63,16 +54,12 @@ def init_db():
                 interests TEXT
             );
         ''')
-        print("Таблица users создана или уже существует.")  # Для отладки
-
         cursor.execute(''' 
             CREATE TABLE IF NOT EXISTS interests (
                 user_id INTEGER REFERENCES users(id),
                 interest TEXT
             );
         ''')
-        print("Таблица interests создана или уже существует.")  # Для отладки
-
         cursor.execute(''' 
             CREATE TABLE IF NOT EXISTS messages (
                 id SERIAL PRIMARY KEY,
@@ -82,7 +69,6 @@ def init_db():
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         ''')
-        print("Таблица messages создана или уже существует.")  # Для отладки
 
         conn.commit()
         cursor.close()
@@ -90,15 +76,12 @@ def init_db():
         print("База данных успешно инициализирована.")
     except Exception as e:
         print(f"Ошибка при инициализации базы данных: {e}")
-        
 
 @app.route('/init_db')
 def init_database():
     """Инициализация базы данных через веб-маршрут."""
     init_db()
     return "База данных инициализирована!"
-
-
 
 # --- Маршруты ---
 @app.route('/')
