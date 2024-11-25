@@ -26,17 +26,15 @@ Session(app)
 socketio = SocketIO(app, manage_session=False)
 
 # --- Конфигурация PostgreSQL ---
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@postgres.railway.internal:5432/railway")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@autorack.proxy.rlwy.net:54163/railway")
+
 
 def get_db_connection():
-    """Получение соединения с PostgreSQL."""
+    """Получение соединения с базой данных PostgreSQL."""
     try:
-        # Проверка на наличие DATABASE_URL
-        if not DATABASE_URL:
-            raise ValueError("DATABASE_URL не установлен или пуст.")
-
         # Подключение к базе данных
         conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        print("Соединение с базой данных успешно установлено.")
         return conn
     except Exception as e:
         print(f"Ошибка подключения к базе данных: {e}")
