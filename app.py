@@ -17,7 +17,7 @@ app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'session:'
 
 # Получение строки подключения Redis из переменной окружения или дефолтного значения
-redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
+redis_url = os.getenv('REDIS_URL', 'redis://red-csud6tilqhvc73clb1q0:6379')
 app.config['SESSION_REDIS'] = redis.StrictRedis.from_url(redis_url)
 
 # Инициализация сессий
