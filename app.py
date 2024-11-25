@@ -183,21 +183,22 @@ def login():
             return "Имя и пароль обязательны.", 400
 
         try:
-            conn = sqlite3.connect(DATABASE)
+            conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT password FROM users WHERE name = ?", (name,))
+            cursor.execute("SELECT password FROM users WHERE name = %s;", (name,))
             user = cursor.fetchone()
             cursor.close()
             conn.close()
-        except sqlite3.Error as e:
-            return f"Ошибка базы данных: {e}", 500
 
-        if user and check_password_hash(user[0], password):
-            session['username'] = name
-            return redirect(url_for('home'))
-        else:
-            return "Неверное имя пользователя или пароль.", 400
+            if user and check_password_hash(user[0], password):
+                session['username'] = name
+                return redirect(url_for('home'))
+            else:
+                return "Неверное имя пользователя или пароль.", 400
+        except Exception as e:
+            return f"Ошибка базы данных: {e}", 500
     return render_template('login.html')
+
 
 @app.route('/rules')
 def rules():
