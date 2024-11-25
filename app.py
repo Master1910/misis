@@ -28,14 +28,21 @@ socketio = SocketIO(app, manage_session=False)
 # --- Конфигурация PostgreSQL ---
 def get_db_connection():
     """Получение соединения с PostgreSQL."""
-    return psycopg2.connect(
-        dbname='userdb_dmgu',
-        user='userdb_dmgu_user',
-        password='WAlSm47o7E4Up5i97nk6scM6PWL9s6g3',
-        host='dpg-ct2bsn9u0jms73egg9fg-a',  # Только доменное имя
-        port='5432'
-    )
-
+    try:
+        print("Подключаемся к базе данных...")
+        conn = psycopg2.connect(
+            dbname='userdb_dmgu',
+            user='userdb_dmgu_user',
+            password='WAlSm47o7E4Up5i97nk6scM6PWL9s6g3',
+            host='dpg-ct2bsn9u0jms73egg9fg-a',
+            port='5432'
+        )
+        print("Подключение установлено!")
+        return conn
+    except Exception as e:
+        print(f"Ошибка подключения к базе данных: {e}")
+        return None
+        
 # --- Утилитарные функции ---
 def init_db():
     """Инициализация базы данных."""
@@ -43,8 +50,8 @@ def init_db():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        print("Создаём таблицу users...")
-        cursor.execute('''
+        # Создание таблиц, если они не существуют
+        cursor.execute(''' 
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 name TEXT UNIQUE NOT NULL,
@@ -53,19 +60,15 @@ def init_db():
                 interests TEXT
             );
         ''')
-        print("Таблица users создана.")
 
-        print("Создаём таблицу interests...")
-        cursor.execute('''
+        cursor.execute(''' 
             CREATE TABLE IF NOT EXISTS interests (
                 user_id INTEGER REFERENCES users(id),
                 interest TEXT
             );
         ''')
-        print("Таблица interests создана.")
 
-        print("Создаём таблицу messages...")
-        cursor.execute('''
+        cursor.execute(''' 
             CREATE TABLE IF NOT EXISTS messages (
                 id SERIAL PRIMARY KEY,
                 sender_id INTEGER REFERENCES users(id),
@@ -74,7 +77,6 @@ def init_db():
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         ''')
-        print("Таблица messages создана.")
 
         conn.commit()
         cursor.close()
@@ -82,6 +84,14 @@ def init_db():
         print("База данных успешно инициализирована.")
     except Exception as e:
         print(f"Ошибка при инициализации базы данных: {e}")
+        
+
+@app.route('/init_db')
+def init_database():
+    """Инициализация базы данных через веб-маршрут."""
+    init_db()
+    return "База данных инициализирована!"
+
 
 
 # --- Маршруты ---
