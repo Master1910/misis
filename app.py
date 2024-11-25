@@ -28,7 +28,7 @@ socketio = SocketIO(app, manage_session=False)
 # --- Конфигурация PostgreSQL ---
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@autorack.proxy.rlwy.net:54163/railway")
 
-ef get_db_connection():
+def get_db_connection():
     """Получение соединения с PostgreSQL."""
     try:
         conn = psycopg2.connect(DATABASE_URL, sslmode='require')
