@@ -29,16 +29,7 @@ socketio = SocketIO(app, manage_session=False)
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@autorack.proxy.rlwy.net:54163/railway")
 
 
-def get_db_connection():
-    """Получение соединения с базой данных PostgreSQL."""
-    try:
-        # Подключение к базе данных
-        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-        print("Соединение с базой данных успешно установлено.")
-        return conn
-    except Exception as e:
-        print(f"Ошибка подключения к базе данных: {e}")
-        return None
+
 # --- Утилитарные функции ---
 def init_db():
     """Инициализация базы данных."""
@@ -83,11 +74,31 @@ def init_db():
     except Exception as e:
         print(f"Ошибка при инициализации базы данных: {e}")
 
+
+def get_db_connection():
+    """Получение соединения с базой данных PostgreSQL."""
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        print("Ошибка: DATABASE_URL не настроена.")
+        return None
+    try:
+        # Подключение к базе данных
+        conn = psycopg2.connect(db_url, sslmode='require')
+        print("Соединение с базой данных успешно установлено.")
+        return conn
+    except Exception as e:
+        print(f"Ошибка подключения к базе данных: {e}")
+        return None
+
+
 @app.route('/init_db')
 def init_database():
     """Инициализация базы данных через веб-маршрут."""
-    init_db()
-    return "База данных инициализирована!"
+    try:
+        init_db()
+        return "База данных инициализирована!"
+    except Exception as e:
+        return f"Ошибка при инициализации базы данных: {e}"
 
 # --- Маршруты ---
 @app.route('/')
