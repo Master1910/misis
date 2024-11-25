@@ -32,7 +32,7 @@ def get_db_connection():
         dbname='userdb_dmgu',
         user='userdb_dmgu_user',
         password='WAlSm47o7E4Up5i97nk6scM6PWL9s6g3',
-        host='postgresql://userdb_dmgu_user:WAlSm47o7E4Up5i97nk6scM6PWL9s6g3@dpg-ct2bsn9u0jms73egg9fg-a/userdb_dmgu',
+        host='postgres://userdb_dmgu_user:WAlSm47o7E4Up5i97nk6scM6PWL9s6g3@dpg-ct2bsn9u0jms73egg9fg-a.internal/userdb_dmgu',
         port='5432'
     )
 
