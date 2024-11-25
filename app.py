@@ -26,11 +26,16 @@ Session(app)
 socketio = SocketIO(app, manage_session=False)
 
 # --- Конфигурация PostgreSQL ---
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@autorack.proxy.rlwy.net:54163/railway")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@postgres.railway.internal:5432/railway")
 
 def get_db_connection():
     """Получение соединения с PostgreSQL."""
     try:
+        # Проверка на наличие DATABASE_URL
+        if not DATABASE_URL:
+            raise ValueError("DATABASE_URL не установлен или пуст.")
+
+        # Подключение к базе данных
         conn = psycopg2.connect(DATABASE_URL, sslmode='require')
         return conn
     except Exception as e:
@@ -41,9 +46,13 @@ def init_db():
     """Инициализация базы данных."""
     try:
         conn = get_db_connection()
+        if not conn:
+            print("Не удалось подключиться к базе данных при инициализации.")
+            return
+
         cursor = conn.cursor()
 
-        # Создание таблиц, если они не существуют
+        # Создание таблиц
         cursor.execute(''' 
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -118,8 +127,11 @@ def register():
 
         hashed_password = generate_password_hash(password)
 
+        conn = get_db_connection()
+        if not conn:
+            return "Ошибка подключения к базе данных. Попробуйте позже.", 500
+
         try:
-            conn = get_db_connection()
             cursor = conn.cursor()
 
             # Добавление пользователя
@@ -137,6 +149,9 @@ def register():
         except psycopg2.IntegrityError:
             error = "Имя пользователя уже существует. Попробуйте другое."
             return render_template('register.html', title="Регистрация", error=error)
+        except Exception as e:
+            print(f"Ошибка базы данных: {e}")
+            return "Произошла ошибка при регистрации.", 500
 
     return render_template('register.html', title="Регистрация")
 
