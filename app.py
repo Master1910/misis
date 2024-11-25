@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
 import os
 import redis
+import sqlite3
 
 # --- Конфигурация приложения ---
 app = Flask(__name__)
@@ -75,19 +76,11 @@ def init_db():
 
 
 def get_db_connection():
-    """Получение соединения с базой данных PostgreSQL."""
-    db_url = os.getenv("DATABASE_URL")
-    if not db_url:
-        print("Ошибка: DATABASE_URL не настроена.")
-        return None
     try:
-        # Подключение к базе данных
-        print(f"Подключение к базе данных с URL: {db_url}")
-        conn = psycopg2.connect(db_url, sslmode='require')
-        print("Соединение с базой данных успешно установлено.")
+        conn = sqlite3.connect('users.db')
         return conn
-    except Exception as e:
-        print(f"Ошибка подключения к базе данных: {e}")
+    except sqlite3.Error as e:
+        print(f"Ошибка подключения к SQLite: {e}")
         return None
 
 
