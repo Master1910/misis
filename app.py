@@ -46,9 +46,12 @@ def get_db_connection():
 # --- Утилитарные функции ---
 def init_db():
     """Инициализация базы данных."""
+    print("Подключаемся к базе данных...")  # Для отладки
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        print("Подключение установлено!")  # Для отладки
 
         # Создание таблиц, если они не существуют
         cursor.execute(''' 
@@ -60,6 +63,7 @@ def init_db():
                 interests TEXT
             );
         ''')
+        print("Таблица users создана или уже существует.")  # Для отладки
 
         cursor.execute(''' 
             CREATE TABLE IF NOT EXISTS interests (
@@ -67,6 +71,7 @@ def init_db():
                 interest TEXT
             );
         ''')
+        print("Таблица interests создана или уже существует.")  # Для отладки
 
         cursor.execute(''' 
             CREATE TABLE IF NOT EXISTS messages (
@@ -77,6 +82,7 @@ def init_db():
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         ''')
+        print("Таблица messages создана или уже существует.")  # Для отладки
 
         conn.commit()
         cursor.close()
