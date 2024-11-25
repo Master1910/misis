@@ -37,6 +37,7 @@ def init_db():
         conn = get_db_connection()
         if not conn:
             print("Не удалось подключиться к базе данных при инициализации.")
+            print(f"Текущее значение DATABASE_URL: {DATABASE_URL}")
             return
 
         cursor = conn.cursor()
