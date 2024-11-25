@@ -3,7 +3,7 @@ from flask_session import Session
 from flask_socketio import SocketIO, emit, join_room
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
-import psycopg2.extras
+from psycopg2.extensions import parse_dsn
 import os
 import redis
 
@@ -28,7 +28,7 @@ socketio = SocketIO(app, manage_session=False)
 # --- Конфигурация PostgreSQL ---
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:iXcGbtHYwmvJjpAfzUipRjFzIMMDttlo@autorack.proxy.rlwy.net:54163/railway")
 
-def get_db_connection():
+ef get_db_connection():
     """Получение соединения с PostgreSQL."""
     try:
         conn = psycopg2.connect(DATABASE_URL, sslmode='require')
