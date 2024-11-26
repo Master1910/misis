@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Получаем имя целевого пользователя из контекста страницы
     const targetUser = "{{ target_user }}"; // Передается из Flask
+    const currentUserId = {{ current_user_id }};
 
     // Подключение к WebSocket
     const socket = io.connect();
