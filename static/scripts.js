@@ -20,7 +20,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Получаем имя целевого пользователя из контекста страницы
     const targetUser = "{{ target_user }}"; // Передается из Flask
-    const currentUserId = {{ current_user_id }};
 
     // Подключение к WebSocket
     const socket = io.connect();
@@ -101,7 +100,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Функция открытия/закрытия бокового меню
 function toggleSidebar() {
-    console.log("Toggle Sidebar вызывается!");
     const sidebar = document.getElementById("sidebar");
     const mainContent = document.getElementById("main-content");
     if (!sidebar || !mainContent) {
