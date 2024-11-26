@@ -8,7 +8,7 @@
             {% for message in messages %}
                 <div class="message {% if message.sender_id == current_user_id %}sent{% else %}received{% endif %}">
                     <p>{{ message.message }}</p>
-                    <span class="timestamp">{{ message.timestamp }}</span>
+                    <span class="timestamp">{{ message.timestamp.strftime('%d.%m.%Y %H:%M:%S') }}</span>
                 </div>
             {% endfor %}
         </div>
@@ -24,36 +24,70 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='scripts.js') }}"></script>
 <script>
-    const socket = io.connect();
-    const chatForm = document.getElementById('chat-form');
-    const messageInput = document.getElementById('message-input');
-    const chatHistory = document.getElementById('chat-history');
+    document.addEventListener("DOMContentLoaded", () => {
+        const socket = io.connect();
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const chatHistory = document.getElementById('chat-history');
+        const currentUserId = {{ current_user_id }};
+        const targetUser = "{{ target_user }}";
 
-    // Отправка сообщения через WebSocket
-    chatForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const message = messageInput.value.trim();
-        if (message) {
-            socket.emit('send_message', {
-                receiver: "{{ target_user }}",
-                message: message
-            });
-            messageInput.value = '';
+        // Отправка сообщения через WebSocket
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('send_message', {
+                    receiver: targetUser,
+                    message: message
+                });
+
+                // Добавление локального сообщения
+                addMessageToChat("Вы", message, true);
+                messageInput.value = '';
+            }
+        });
+
+        // Получение сообщения через WebSocket
+        socket.on('receive_message', function(data) {
+            if (data && data.message) {
+                const sender = data.sender || "Неизвестно";
+                addMessageToChat(sender, data.message, data.sender_id === currentUserId, data.timestamp);
+            }
+        });
+
+        // Добавление сообщения в чат
+        function addMessageToChat(sender, text, isUser, timestamp = null) {
+            const newMessage = document.createElement('div');
+            newMessage.className = isUser ? 'message sent' : 'message received';
+            newMessage.innerHTML = `
+                <p><strong>${sender}:</strong> ${text}</p>
+                <span class="timestamp">${timestamp ? new Date(timestamp).toLocaleString() : new Date().toLocaleString()}</span>
+            `;
+            chatHistory.appendChild(newMessage);
+            scrollChatToBottom();
         }
-    });
 
-    // Получение сообщений через WebSocket
-    socket.on('receive_message', function(data) {
-        const newMessage = document.createElement('div');
-        newMessage.className = data.sender_id === {{ current_user_id }} ? 'message sent' : 'message received';
-        newMessage.innerHTML = `
-            <p>${data.message}</p>
-            <span class="timestamp">${new Date(data.timestamp).toLocaleString()}</span>
-        `;
-        chatHistory.appendChild(newMessage);
-        chatHistory.scrollTop = chatHistory.scrollHeight; // Автопрокрутка вниз
+        // Прокрутка вниз истории чата
+        function scrollChatToBottom() {
+            chatHistory.scrollTo({
+                top: chatHistory.scrollHeight,
+                behavior: "smooth"
+            });
+        }
+
+        // Сообщение о входе пользователя в чат
+        socket.emit("join_chat", {
+            chat_id: targetUser
+        });
+
+        // Обработка общего сообщения от системы
+        socket.on('message', (data) => {
+            if (data && data.msg) {
+                addMessageToChat("Система", data.msg, false);
+            }
+        });
     });
 </script>
 {% endblock %}
