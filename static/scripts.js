@@ -13,6 +13,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatForm = document.querySelector("#chat-form");
     const chatInput = document.querySelector("#message-input");
 
+    // Получаем имя целевого пользователя из контекста страницы
+    const targetUser = "{{ target_user }}";  // Передаем это значение из Flask
+
     // Подключение к WebSocket
     const socket = io.connect();
 
