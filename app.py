@@ -307,21 +307,25 @@ def handle_send_message(data):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        # Получаем ID отправителя и получателя
+        cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
+        sender_id = cursor.fetchone()[0]
+        cursor.execute("SELECT id FROM users WHERE username = %s", (receiver,))
+        receiver_id = cursor.fetchone()[0]
+        # Вставляем сообщение в базу данных
         cursor.execute("""
             INSERT INTO messages (sender_id, receiver_id, message)
-            VALUES (
-                (SELECT id FROM users WHERE username = %s),
-                (SELECT id FROM users WHERE username = %s),
-                %s
-            );
-        """, (sender, receiver, message))
+            VALUES (%s, %s, %s)
+        """, (sender_id, receiver_id, message))
         conn.commit()
-        emit('receive_message', {'sender': sender, 'message': message}, room=room)
+        # Отправляем сообщение другому пользователю
+        emit('receive_message', {'sender': sender, 'message': message}, room=receiver_id)
     except Exception as e:
         print(f"Ошибка при сохранении сообщения: {e}")
     finally:
         cursor.close()
         conn.close()
+
 
 @socketio.on('join')
 def on_join(data):
@@ -343,10 +347,12 @@ def handle_message(data):
 
 @socketio.on('connect')
 def on_connect():
-    """Когда пользователь подключается, мы добавляем его в чат."""
+    """Когда пользователь подключается, добавляем его в чат."""
     username = session.get("username")
     if username:
         print(f"User {username} connected")
+        room = f"chat_{username}"
+        join_room(room)
 
 @socketio.on('join_chat')
 def join_chat(data):
