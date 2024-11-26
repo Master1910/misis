@@ -24,7 +24,12 @@
     </div>
 </div>
 
+<!-- Подключение Socket.IO через CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.3/socket.io.min.js"></script>
+
+<!-- Ваш кастомный JavaScript -->
 <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         const socket = io.connect();
@@ -62,7 +67,7 @@
         function addMessageToChat(sender, text, isUser, timestamp = null) {
             const newMessage = document.createElement('div');
             newMessage.className = isUser ? 'message sent' : 'message received';
-            newMessage.innerHTML = `
+            newMessage.innerHTML = ` 
                 <p><strong>${sender}:</strong> ${text}</p>
                 <span class="timestamp">${timestamp ? new Date(timestamp).toLocaleString() : new Date().toLocaleString()}</span>
             `;
