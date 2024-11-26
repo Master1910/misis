@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const socket = io.connect();
 
     if (chatForm && chatHistory && chatInput) {
-        // Обработка отправки сообщения
+        // Отправка сообщения
         chatForm.addEventListener("submit", (event) => {
             event.preventDefault();
             const messageText = chatInput.value.trim();
@@ -41,25 +41,35 @@ document.addEventListener("DOMContentLoaded", () => {
         socket.on("receive_message", (data) => {
             addMessageToChat(data.sender, data.message, false);
         });
-    }
 
-    // Прокрутка вниз истории чата
-    function scrollChatToBottom() {
-        if (chatHistory) {
-            chatHistory.scrollTop = chatHistory.scrollHeight;
+        // Прокрутка вниз истории чата
+        function scrollChatToBottom() {
+            if (chatHistory) {
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }
         }
-    }
 
-    // Добавление сообщения в чат
-    function addMessageToChat(sender, text, isUser) {
-        const message = document.createElement("div");
-        message.className = isUser ? "message sent" : "message received";
-        message.innerHTML = `
-            <p><strong>${sender}:</strong> ${text}</p>
-            <span class="timestamp">${new Date().toLocaleString()}</span>
-        `;
-        chatHistory.appendChild(message);
-        scrollChatToBottom();
+        // Добавление сообщения в чат
+        function addMessageToChat(sender, text, isUser) {
+            const message = document.createElement("div");
+            message.className = isUser ? "message sent" : "message received";
+            message.innerHTML = `
+                <p><strong>${sender}:</strong> ${text}</p>
+                <span class="timestamp">${new Date().toLocaleString()}</span>
+            `;
+            chatHistory.appendChild(message);
+            scrollChatToBottom();
+        }
+
+        // Сообщение о входе пользователя в чат
+        socket.emit('join_chat', {
+            chat_id: targetUser  // Идентификатор чата
+        });
+
+        // Отправка сообщения о подключении пользователя
+        socket.on('message', (data) => {
+            addMessageToChat(data.msg, "", false);  // Добавляем сообщение о подключении в чат
+        });
     }
 });
 
