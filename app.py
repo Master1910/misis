@@ -147,7 +147,7 @@ def register():
 
             # Добавление пользователя
             cursor.execute("""
-                INSERT INTO users (name, password, institute, interests) 
+                INSERT INTO users (username, password, institute, interests) 
                 VALUES (%s, %s, %s, %s);
             """, (username, hashed_password, institute, interests))
 
