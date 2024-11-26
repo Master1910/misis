@@ -245,16 +245,13 @@ def chat(user_id):
     if not current_user:
         return redirect(url_for('login'))
     try:
+        # Получаем целевого пользователя
         conn = get_db_connection()
-        if not conn:
-            return "Ошибка подключения к базе данных.", 500
         cursor = conn.cursor(dictionary=True)
-        # Проверяем, существует ли получатель
         cursor.execute("SELECT username FROM users WHERE id = %s;", (user_id,))
         target_user = cursor.fetchone()
         if not target_user:
             return "Пользователь не найден.", 404
-        # Получаем ID текущего пользователя
         cursor.execute("SELECT id FROM users WHERE username = %s;", (current_user,))
         current_user_row = cursor.fetchone()
         if not current_user_row:
@@ -271,15 +268,16 @@ def chat(user_id):
         messages = cursor.fetchall()
         cursor.close()
         conn.close()
+        # Отправляем информацию о чате на страницу
         return render_template(
             'chat.html',
             messages=messages,
-            target_user=target_user['username'],  # Здесь используем правильное поле
-            current_user_id=current_user_id
+            target_user=target_user['username'],
+            current_user_id=current_user_id,
+            user_id=user_id
         )
     except Exception as e:
-        print(f"Ошибка базы данных: {e}")
-        return "Ошибка при загрузке чата.", 500
+        return f"Ошибка при загрузке чата: {e}", 500
 
 @app.route('/logout')
 def logout():
@@ -342,6 +340,29 @@ def handle_message(data):
         message = data.get('msg')
         room = f"{username}_chat"
         emit('message', {'msg': f"{username}: {message}"}, room=room)
+
+@socketio.on('connect')
+def on_connect():
+    """Когда пользователь подключается, мы добавляем его в чат."""
+    username = session.get("username")
+    if username:
+        print(f"User {username} connected")
+
+@socketio.on('join_chat')
+def join_chat(data):
+    """Когда пользователь заходит в чат."""
+    chat_id = data['chat_id']
+    join_room(f'chat_{chat_id}')
+    print(f"User {session.get('username')} joined chat {chat_id}")
+
+@socketio.on('leave_chat')
+def leave_chat(data):
+    """Когда пользователь покидает чат."""
+    chat_id = data['chat_id']
+    leave_room(f'chat_{chat_id}')
+    print(f"User {session.get('username')} left chat {chat_id}")
+
+
 
 # --- Запуск ---
 if __name__ == '__main__':
