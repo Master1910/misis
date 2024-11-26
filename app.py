@@ -6,7 +6,9 @@ import mysql.connector
 import os
 import redis
 from datetime import datetime
+import eventlet
 
+eventlet.monkey_patch()
 # --- Конфигурация приложения ---
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
