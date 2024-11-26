@@ -101,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Функция открытия/закрытия бокового меню
 function toggleSidebar() {
+    console.log("Toggle Sidebar вызывается!");
     const sidebar = document.getElementById("sidebar");
     const mainContent = document.getElementById("main-content");
     if (!sidebar || !mainContent) {
