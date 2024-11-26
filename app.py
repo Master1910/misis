@@ -144,17 +144,15 @@ def register():
 
         try:
             cursor = conn.cursor()
-
+        
             # Добавление пользователя
             cursor.execute("""
                 INSERT INTO users (username, password, institute, interests) 
                 VALUES (%s, %s, %s, %s);
             """, (username, hashed_password, institute, interests))
-
             conn.commit()
             cursor.close()
             conn.close()
-
             session['username'] = username
             return redirect(url_for('home'))
         except mysql.connector.IntegrityError:
@@ -163,40 +161,40 @@ def register():
         except Exception as e:
             print(f"Ошибка базы данных: {e}")
             return "Произошла ошибка при регистрации.", 500
-
     return render_template('register.html', title="Регистрация")
+
 
 def find_users_with_common_interests(user_id):
     """Поиск пользователей с общими интересами."""
-    conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-
-    # Получение интересов текущего пользователя
-    cursor.execute("SELECT interests FROM users WHERE id = %s;", (user_id,))
-    user_interests = cursor.fetchone()
-    if not user_interests:
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        # Получение интересов текущего пользователя
+        cursor.execute("SELECT interests FROM users WHERE id = %s;", (user_id,))
+        user_interests_row = cursor.fetchone()
+        if not user_interests_row or not user_interests_row['interests']:
+            return []
+        user_interests = set(user_interests_row['interests'].split(','))
+        # Поиск других пользователей с совпадающими интересами
+        cursor.execute("SELECT id, username, interests FROM users WHERE id != %s;", (user_id,))
+        all_users = cursor.fetchall()
+        matches = []
+        for other_user in all_users:
+            other_interests_set = set(other_user['interests'].split(','))
+            common_interests = user_interests.intersection(other_interests_set)
+            if common_interests:
+                matches.append({
+                    'id': other_user['id'],
+                    'name': other_user['username'],
+                    'common_interests': ', '.join(common_interests)
+                })
+        cursor.close()
+        conn.close()
+        return matches
+    except Exception as e:
+        print(f"Ошибка базы данных: {e}")
         return []
 
-    user_interests = set(user_interests['interests'].split(','))
-
-    # Поиск других пользователей с совпадающими интересами
-    cursor.execute("SELECT id, username, interests FROM users WHERE id != %s;", (user_id,))
-    all_users = cursor.fetchall()
-
-    matches = []
-    for other_user in all_users:
-        other_interests_set = set(other_user['interests'].split(','))
-        common_interests = user_interests.intersection(other_interests_set)
-        if common_interests:
-            matches.append({
-                'id': other_user['id'],
-                'name': other_user['username'],
-                'common_interests': ', '.join(common_interests)
-            })
-
-    cursor.close()
-    conn.close()
-    return matches
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -251,25 +249,21 @@ def find_matches():
     username = session.get("username")
     if not username:
         return redirect(url_for('login'))
-
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-
         # Получаем ID текущего пользователя
-        cursor.execute("SELECT id FROM users WHERE name = %s;", (username,))
+        cursor.execute("SELECT id FROM users WHERE username = %s;", (username,))
         user_row = cursor.fetchone()
         if not user_row:
             return "Пользователь не найден в базе данных.", 404
-
         user_id = user_row[0]
         matches = find_users_with_common_interests(user_id)
-
         return render_template('find_matches.html', title="Найти совпадения", matches=matches)
-
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Произошла ошибка при поиске совпадений.", 500
+
 #для создания чата
 @app.route('/chat/<int:user_id>', methods=['GET'])
 def chat(user_id):
@@ -277,37 +271,35 @@ def chat(user_id):
     current_user = session.get("username")
     if not current_user:
         return redirect(url_for('login'))
-
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
-
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         # Проверяем, существует ли пользователь
-        cursor.execute("SELECT name FROM users WHERE id = %s;", (user_id,))
+        cursor.execute("SELECT username FROM users WHERE id = %s;", (user_id,))
         target_user = cursor.fetchone()
         if not target_user:
             return "Пользователь не найден.", 404
-
+        # Получаем ID текущего пользователя
+        cursor.execute("SELECT id FROM users WHERE username = %s;", (current_user,))
+        current_user_row = cursor.fetchone()
+        if not current_user_row:
+            return "Текущий пользователь не найден.", 404
+        current_user_id = current_user_row['id']
         # Получаем историю сообщений
         cursor.execute("""
             SELECT sender_id, message, timestamp 
             FROM messages 
-            WHERE (sender_id = (SELECT id FROM users WHERE username = %s) AND receiver_id = %s)
-               OR (sender_id = %s AND receiver_id = (SELECT id FROM users WHERE username = %s))
+            WHERE (sender_id = %s AND receiver_id = %s)
+               OR (sender_id = %s AND receiver_id = %s)
             ORDER BY timestamp
-        """, (current_user, user_id, user_id, current_user))
+        """, (current_user_id, user_id, user_id, current_user_id))
         messages = cursor.fetchall()
-
         cursor.close()
         conn.close()
-
-        return render_template('chat.html', messages=messages, target_user=target_user[0])
-
+        return render_template('chat.html', messages=messages, target_user=target_user['username'])
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка при загрузке чата.", 500
-
-
 
 @app.route('/logout')
 def logout():
