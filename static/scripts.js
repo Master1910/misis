@@ -85,3 +85,17 @@ function toggleSidebar() {
         mainContent.classList.add('menu-open');
     }
 }
+
+// Улучшенная анимация для плавной прокрутки чата
+document.querySelector('.chat-history').addEventListener('scroll', () => {
+    const chatHistory = document.querySelector('.chat-history');
+    const scrollTop = chatHistory.scrollTop;
+    const scrollHeight = chatHistory.scrollHeight;
+    const clientHeight = chatHistory.clientHeight;
+    
+    if (scrollTop + clientHeight >= scrollHeight - 5) {
+        chatHistory.style.scrollBehavior = 'smooth';
+    } else {
+        chatHistory.style.scrollBehavior = 'auto';
+    }
+});
