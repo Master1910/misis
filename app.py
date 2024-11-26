@@ -298,39 +298,41 @@ def internal_server_error(e):
 # --- WebSocket ---
 @socketio.on('send_message')
 def handle_send_message(data):
-    """Обработка отправки сообщения"""
     sender = session.get("username")
-    receiver = data.get("receiver")  # Имя получателя
+    receiver = data.get("receiver")
     message = data.get("message")
+
     if not sender or not receiver or not message:
-        print("Ошибка: данные отправки сообщения неполные.")
         return
-    
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        
-        # Получаем ID отправителя
+
+        # Получение ID отправителя
         cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
         sender_id = cursor.fetchone()['id']
-        
-        # Получаем ID получателя
+
+        # Получение ID получателя
         cursor.execute("SELECT id FROM users WHERE username = %s", (receiver,))
         receiver_id = cursor.fetchone()['id']
-        
-        # Вставляем сообщение
+
+        # Сохранение сообщения в базе данных
         cursor.execute("""
             INSERT INTO messages (sender_id, receiver_id, message, timestamp)
             VALUES (%s, %s, %s, NOW())
         """, (sender_id, receiver_id, message))
         conn.commit()
-        print(f"Сообщение от {sender} сохранено в БД.")
-        
-        # Формируем комнату
-        room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
-        emit('receive_message', {'sender': sender, 'message': message}, room=room)
+
+        # Отправка сообщения получателям
+        emit('receive_message', {
+            'sender_id': sender_id,
+            'receiver_id': receiver_id,
+            'message': message,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }, broadcast=True)
     except Exception as e:
-        print(f"Ошибка при отправке сообщения: {e}")
+        print(f"Ошибка: {e}")
     finally:
         cursor.close()
         conn.close()
