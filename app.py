@@ -211,7 +211,7 @@ def login():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT password FROM users WHERE name = %s;", (name,))
+            cursor.execute("SELECT password FROM users WHERE username = %s;", (name,))
             user = cursor.fetchone()
             cursor.close()
             conn.close()
