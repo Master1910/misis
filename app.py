@@ -240,7 +240,7 @@ def find_matches():
 #для создания чата
 @app.route('/chat/<int:user_id>', methods=['GET', 'POST'])
 def chat(user_id):
-    """Страница чата между двумя пользователями."""
+    """Страница чата между пользователями."""
     current_user = session.get("username")
     if not current_user:
         return redirect(url_for('login'))
@@ -248,25 +248,18 @@ def chat(user_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-
-        # Получение ID текущего пользователя
         cursor.execute("SELECT id FROM users WHERE username = %s;", (current_user,))
-        current_user_row = cursor.fetchone()
-        if not current_user_row:
-            return "Текущий пользователь не найден.", 404
-        current_user_id = current_user_row['id']
+        current_user_id = cursor.fetchone()['id']
 
-        # Получение имени целевого пользователя
         cursor.execute("SELECT username FROM users WHERE id = %s;", (user_id,))
         target_user = cursor.fetchone()
         if not target_user:
             return "Пользователь не найден.", 404
 
-        # Получение истории сообщений из таблицы mess
         cursor.execute('''
-            SELECT sender_id, message, timestamp 
-            FROM mess 
-            WHERE (sender_id = %s AND receiver_id = %s) 
+            SELECT sender_id, message, timestamp
+            FROM mess
+            WHERE (sender_id = %s AND receiver_id = %s)
                OR (sender_id = %s AND receiver_id = %s)
             ORDER BY timestamp
         ''', (current_user_id, user_id, user_id, current_user_id))
@@ -274,15 +267,12 @@ def chat(user_id):
 
         cursor.close()
         conn.close()
-
-        return render_template('chat.html',
-                               messages=messages,
-                               target_user=target_user['username'],
-                               current_user_id=current_user_id,
-                               user_id=user_id)
+        return render_template('chat.html', messages=messages, target_user=target_user['username'])
     except Exception as e:
         print(f"Ошибка при загрузке чата: {e}")
         return f"Ошибка: {e}", 500
+
+
 @app.route('/logout')
 def logout():
     """Выход из системы."""
@@ -302,7 +292,7 @@ def internal_server_error(e):
 # --- WebSocket ---
 @socketio.on('send_message')
 def handle_send_message(data):
-    """Обработка отправки сообщений через WebSocket."""
+    """Отправка сообщений через WebSocket."""
     sender = session.get("username")
     receiver_id = data.get("receiver_id")
     message = data.get("message")
@@ -313,19 +303,15 @@ def handle_send_message(data):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-
-        # Получение ID отправителя
-        cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
+        cursor.execute("SELECT id FROM users WHERE username = %s;", (sender,))
         sender_id = cursor.fetchone()['id']
 
-        # Сохранение сообщения в таблицу mess
-        cursor.execute('''
+        cursor.execute("""
             INSERT INTO mess (sender_id, receiver_id, message, timestamp)
-            VALUES (%s, %s, %s, NOW())
-        ''', (sender_id, receiver_id, message))
+            VALUES (%s, %s, %s, NOW());
+        """, (sender_id, receiver_id, message))
         conn.commit()
 
-        # Отправка сообщения через WebSocket
         emit('receive_message', {
             'sender_id': sender_id,
             'receiver_id': receiver_id,
@@ -333,11 +319,10 @@ def handle_send_message(data):
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }, broadcast=True)
     except Exception as e:
-        print(f"Ошибка: {e}")
+        print(f"Ошибка при отправке сообщения: {e}")
     finally:
         cursor.close()
         conn.close()
-
 
 @socketio.on('join')
 def on_join(data):
@@ -348,7 +333,7 @@ def on_join(data):
         join_room(room)
         emit('message', {'msg': f"{username} присоединился к чату."}, room=room)
 
-@socketio.on('message')
+@socketio.on('mess')
 def handle_message(data):
     """Обработка входящих сообщений в чатах."""
     username = session.get('username')
