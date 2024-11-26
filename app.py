@@ -1,10 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_session import Session
-from flask_socketio import SocketIO, emit, join_room
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
 import mysql.connector
 import os
 import redis
+from datetime import datetime
 
 # --- Конфигурация приложения ---
 app = Flask(__name__)
@@ -238,26 +239,28 @@ def find_matches():
         return "Ошибка поиска совпадений.", 500
 
 #для создания чата
-@app.route('/chat/<int:user_id>', methods=['GET'])
+@app.route('/chat/<int:user_id>', methods=['GET', 'POST'])
 def chat(user_id):
-    """Страница чата с другим пользователем."""
     current_user = session.get("username")
     if not current_user:
         return redirect(url_for('login'))
     try:
-        # Получаем целевого пользователя
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT username FROM users WHERE id = %s;", (user_id,))
-        target_user = cursor.fetchone()
-        if not target_user:
-            return "Пользователь не найден.", 404
+
+        # Получение информации о текущем и целевом пользователях
         cursor.execute("SELECT id FROM users WHERE username = %s;", (current_user,))
         current_user_row = cursor.fetchone()
         if not current_user_row:
             return "Текущий пользователь не найден.", 404
         current_user_id = current_user_row['id']
-        # Получаем историю сообщений
+
+        cursor.execute("SELECT username FROM users WHERE id = %s;", (user_id,))
+        target_user = cursor.fetchone()
+        if not target_user:
+            return "Пользователь не найден.", 404
+
+        # Получение истории сообщений
         cursor.execute("""
             SELECT sender_id, message, timestamp 
             FROM messages 
@@ -266,18 +269,18 @@ def chat(user_id):
             ORDER BY timestamp
         """, (current_user_id, user_id, user_id, current_user_id))
         messages = cursor.fetchall()
+
         cursor.close()
         conn.close()
-        # Отправляем информацию о чате на страницу
-        return render_template(
-            'chat.html',
-            messages=messages,
-            target_user=target_user['username'],
-            current_user_id=current_user_id,
-            user_id=user_id
-        )
+
+        return render_template('chat.html',
+                               messages=messages,
+                               target_user=target_user['username'],
+                               current_user_id=current_user_id,
+                               user_id=user_id)
     except Exception as e:
-        return f"Ошибка при загрузке чата: {e}", 500
+        print(f"Ошибка при загрузке чата: {e}")
+        return f"Ошибка: {e}", 500
 
 @app.route('/logout')
 def logout():
