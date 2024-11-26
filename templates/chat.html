@@ -5,22 +5,21 @@
     <h2>Чат с {{ target_user }}</h2>
     <div class="chat-container">
         <div class="chat-history" id="chat-history">
-            {% for sender_id, message, timestamp in messages %}
-                <div class="message">
-                    <p><strong>{{ sender_id }}:</strong> {{ message }}</p>
-                    <span class="timestamp">{{ timestamp }}</span>
+            {% for message in messages %}
+                <div class="message {% if message.sender_id == current_user_id %}sent{% else %}received{% endif %}">
+                    <p>{{ message.message }}</p>
+                    <span class="timestamp">{{ message.timestamp }}</span>
                 </div>
             {% endfor %}
         </div>
-        <form id="chat-form" class="chat-form">
+        <form id="chat-form">
             <input 
                 type="text" 
-                id="message" 
-                class="chat-input" 
+                id="message-input" 
                 placeholder="Введите сообщение..." 
                 autocomplete="off" 
                 required>
-            <button type="submit" class="chat-send-btn">Отправить</button>
+            <button type="submit">Отправить</button>
         </form>
     </div>
 </div>
@@ -29,29 +28,27 @@
 <script>
     const socket = io.connect();
     const chatForm = document.getElementById('chat-form');
-    const messageInput = document.getElementById('message');
+    const messageInput = document.getElementById('message-input');
     const chatHistory = document.getElementById('chat-history');
 
-    chatForm.onsubmit = function(e) {
+    // Отправка сообщения через WebSocket
+    chatForm.addEventListener('submit', function(e) {
         e.preventDefault();
         const message = messageInput.value.trim();
-
         if (message) {
-            socket.emit('send_message', { 
-                receiver: "{{ target_user }}", 
-                message: message 
+            socket.emit('send_message', {
+                receiver: "{{ target_user }}",
+                message: message
             });
             messageInput.value = '';
         }
-    };
+    });
 
+    // Получение сообщений через WebSocket
     socket.on('receive_message', function(data) {
         const newMessage = document.createElement('div');
-        newMessage.classList.add('message');
-        newMessage.innerHTML = `
-            <p><strong>${data.sender}:</strong> ${data.message}</p>
-            <span class="timestamp">${new Date().toLocaleString()}</span>
-        `;
+        newMessage.className = data.sender === "{{ session['username'] }}" ? 'message sent' : 'message received';
+        newMessage.innerHTML = `<p>${data.message}</p><span class="timestamp">${new Date().toLocaleString()}</span>`;
         chatHistory.appendChild(newMessage);
         chatHistory.scrollTop = chatHistory.scrollHeight; // Автопрокрутка вниз
     });
