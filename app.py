@@ -165,10 +165,12 @@ def register():
 
 
 def find_users_with_common_interests(user_id):
-    """Поиск пользователей с общими интересами."""
+    """Поиск пользователей с общими интересами для MySQL."""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        if not conn:
+            return []
+        cursor = conn.cursor(dictionary=True)  # `dictionary=True` возвращает результаты как словарь
         # Получение интересов текущего пользователя
         cursor.execute("SELECT interests FROM users WHERE id = %s;", (user_id,))
         user_interests_row = cursor.fetchone()
@@ -176,16 +178,16 @@ def find_users_with_common_interests(user_id):
             return []
         user_interests = set(user_interests_row['interests'].split(','))
         # Поиск других пользователей с совпадающими интересами
-        cursor.execute("SELECT id, username, interests FROM users WHERE id != %s;", (user_id,))
+        cursor.execute("SELECT id, name, interests FROM users WHERE id != %s;", (user_id,))
         all_users = cursor.fetchall()
         matches = []
         for other_user in all_users:
-            other_interests_set = set(other_user['interests'].split(','))
+            other_interests_set = set(other_user['interests'].split(',')) if other_user['interests'] else set()
             common_interests = user_interests.intersection(other_interests_set)
             if common_interests:
                 matches.append({
                     'id': other_user['id'],
-                    'name': other_user['username'],
+                    'name': other_user['name'],
                     'common_interests': ', '.join(common_interests)
                 })
         cursor.close()
@@ -194,6 +196,7 @@ def find_users_with_common_interests(user_id):
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return []
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -273,9 +276,11 @@ def chat(user_id):
         return redirect(url_for('login'))
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        if not conn:
+            return "Ошибка подключения к базе данных.", 500
+        cursor = conn.cursor(dictionary=True)
         # Проверяем, существует ли пользователь
-        cursor.execute("SELECT username FROM users WHERE id = %s;", (user_id,))
+        cursor.execute("SELECT name FROM users WHERE id = %s;", (user_id,))
         target_user = cursor.fetchone()
         if not target_user:
             return "Пользователь не найден.", 404
@@ -296,10 +301,11 @@ def chat(user_id):
         messages = cursor.fetchall()
         cursor.close()
         conn.close()
-        return render_template('chat.html', messages=messages, target_user=target_user['username'])
+        return render_template('chat.html', messages=messages, target_user=target_user['name'])
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка при загрузке чата.", 500
+
 
 @app.route('/logout')
 def logout():
