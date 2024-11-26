@@ -353,12 +353,13 @@ def handle_message(data):
 
 @socketio.on('connect')
 def on_connect():
-    """Когда пользователь подключается, добавляем его в чат."""
     username = session.get("username")
     if username:
         print(f"User {username} connected")
         room = f"chat_{username}"
         join_room(room)
+    else:
+        print("No username in session, failed to join room.")
 
 @socketio.on('join_chat')
 def join_chat(data):
