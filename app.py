@@ -5,30 +5,23 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import mysql.connector
 import os
 import redis
-
 # --- Конфигурация приложения ---
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
-
 # --- Конфигурация Redis для хранения сессий ---
 app.config['SESSION_TYPE'] = 'redis'
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'session:'
-
 # Получение строки подключения Redis из переменной окружения или дефолтного значения
 redis_url = os.getenv('REDIS_URL', 'redis://red-ct2dkebtq21c738p0oo0:6379')
 app.config['SESSION_REDIS'] = redis.StrictRedis.from_url(redis_url)
-
 # Инициализация сессий
 Session(app)
-
 # Инициализация WebSocket
 socketio = SocketIO(app, manage_session=False)
-
 # --- Конфигурация MySQL ---
 DATABASE_URL = "mysql://root:lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym@junction.proxy.rlwy.net:42004/railway"
-
 # --- Утилитарные функции ---
 def get_db_connection():
     try:
@@ -43,7 +36,6 @@ def get_db_connection():
     except mysql.connector.Error as e:
         print(f"Ошибка подключения к MySQL: {e}")
         return None
-
 def init_db():
     """Инициализация базы данных."""
     try:
@@ -51,47 +43,34 @@ def init_db():
         if not conn:
             print("Не удалось подключиться к базе данных.")
             return
-
         cursor = conn.cursor()
-
         # Создание таблиц
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) UNIQUE NOT NULL,
+                username VARCHAR(255) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL,
                 institute VARCHAR(255),
                 interests TEXT
             );
         ''')
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS interests (
-                user_id INT,
-                interest VARCHAR(255),
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            );
-        ''')
-
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS messages (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                sender_id INT,
-                receiver_id INT,
-                message TEXT,
+                sender_id INT NOT NULL,
+                receiver_id INT NOT NULL,
+                message TEXT NOT NULL,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (sender_id) REFERENCES users(id),
                 FOREIGN KEY (receiver_id) REFERENCES users(id)
             );
         ''')
-
         conn.commit()
         cursor.close()
         conn.close()
         print("База данных успешно инициализирована.")
     except mysql.connector.Error as e:
         print(f"Ошибка при инициализации базы данных: {e}")
-
 
 @app.route('/init_db')
 def init_database():
@@ -107,7 +86,6 @@ def init_database():
 def home():
     """Главная страница."""
     username = session.get("username")
-
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -118,13 +96,11 @@ def home():
     except Exception as e:
         print(f"Ошибка при выполнении запроса: {e}")
         user_count = 0
-
     try:
         active_users = len(app.config['SESSION_REDIS'].keys())
     except redis.ConnectionError as e:
         print(f"Ошибка подключения к Redis: {e}")
         active_users = 0
-
     return render_template("home.html", user_count=user_count, username=username, active_users=active_users)
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -135,16 +111,12 @@ def register():
         password = request.form.get('password')
         institute = request.form.get('institute')
         interests = request.form.get('interests')
-
         hashed_password = generate_password_hash(password)
-
         conn = get_db_connection()
         if not conn:
             return "Ошибка подключения к базе данных. Попробуйте позже.", 500
-
         try:
             cursor = conn.cursor()
-        
             # Добавление пользователя
             cursor.execute("""
                 INSERT INTO users (username, password, institute, interests) 
@@ -162,7 +134,6 @@ def register():
             print(f"Ошибка базы данных: {e}")
             return "Произошла ошибка при регистрации.", 500
     return render_template('register.html', title="Регистрация")
-
 
 def find_users_with_common_interests(user_id):
     """Поиск пользователей с общими интересами."""
@@ -200,9 +171,6 @@ def find_users_with_common_interests(user_id):
         print(f"Ошибка базы данных: {e}")
         return []
 
-
-
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Страница входа пользователя."""
@@ -231,24 +199,20 @@ def login():
             return f"Ошибка базы данных: {e}", 500
     return render_template('login.html')
 
-
 @app.route('/rules')
 def rules():
     """Страница с правилами использования."""
     return render_template('rules.html', title="Правила использования")
-
 
 @app.route('/how_it_works')
 def how_it_works():
     """Страница 'Как это работает'."""
     return render_template('how_it_works.html', title="Как это работает")
 
-
 @app.route('/how_it_built')
 def how_it_built():
     """Страница 'Как это устроено'."""
     return render_template('how_it_built.html', title="Как это устроено")
-
 
 @app.route('/find_matches')
 def find_matches():
@@ -310,25 +274,21 @@ def chat(user_id):
         print(f"Ошибка базы данных: {e}")
         return "Ошибка при загрузке чата.", 500
 
-
 @app.route('/logout')
 def logout():
     """Выход из системы."""
     session.pop("username", None)
     return redirect(url_for('home'))
 
-
 @app.errorhandler(403)
 def forbidden(e):
     """Обработка ошибки 403."""
     return render_template("403.html"), 403
 
-
 @app.errorhandler(500)
 def internal_server_error(e):
     """Обработка ошибки сервера."""
     return render_template("500.html"), 500
-
 
 # --- WebSocket ---
 @socketio.on('send_message')
@@ -358,13 +318,11 @@ def handle_send_message(data):
         cursor.close()
         conn.close()
 
-
 @socketio.on('join')
 def handle_join(data):
     """Подключение пользователя к комнате чата."""
     sender = session.get("username")
     receiver = data.get("receiver")
-    
     if not sender or not receiver:
         return
 
@@ -372,8 +330,6 @@ def handle_join(data):
     room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
     join_room(room)
     emit('room_joined', {'room': room}, room=room)
-
-
 
 # --- Запуск ---
 if __name__ == '__main__':
