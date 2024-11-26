@@ -339,12 +339,9 @@ def handle_send_message(data):
     message = data.get("message")
     if not sender or not receiver or not message:
         return
-    # Создаем уникальное имя комнаты
-    room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        # Сохраняем сообщение в базе данных
         cursor.execute("""
             INSERT INTO messages (sender_id, receiver_id, message)
             VALUES (
@@ -354,7 +351,6 @@ def handle_send_message(data):
             );
         """, (sender, receiver, message))
         conn.commit()
-        # Уведомляем всех в комнате (обе стороны чата)
         emit('receive_message', {'sender': sender, 'message': message}, room=room)
     except Exception as e:
         print(f"Ошибка при сохранении сообщения: {e}")
