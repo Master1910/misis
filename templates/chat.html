@@ -35,7 +35,7 @@
         const targetUser = "{{ target_user }}";
 
         // Обработчик отправки сообщения
-        chatForm.addEventListener('submit', function(e) {
+        chatForm.addEventListener('submit', function (e) {
             e.preventDefault(); // Предотвращаем перезагрузку страницы
             const message = messageInput.value.trim();
             if (message) {
@@ -44,21 +44,21 @@
                     message: message
                 });
 
-                // Локальное добавление сообщения
+                // Локальное добавление отправленного сообщения
                 addMessageToChat("Вы", message, true);
                 messageInput.value = '';
             }
         });
 
-        // Получение сообщений
-        socket.on('receive_message', function(data) {
+        // Обработка входящих сообщений
+        socket.on('receive_message', function (data) {
             if (data && data.message) {
                 const sender = data.sender || "Неизвестно";
                 addMessageToChat(sender, data.message, data.sender_id === currentUserId, data.timestamp);
             }
         });
 
-        // Добавление сообщения в чат
+        // Функция добавления сообщения в чат
         function addMessageToChat(sender, text, isUser, timestamp = null) {
             const newMessage = document.createElement('div');
             newMessage.className = isUser ? 'message sent' : 'message received';
@@ -70,7 +70,7 @@
             scrollChatToBottom();
         }
 
-        // Прокрутка вниз
+        // Прокрутка истории чата вниз
         function scrollChatToBottom() {
             chatHistory.scrollTo({
                 top: chatHistory.scrollHeight,
