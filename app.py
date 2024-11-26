@@ -247,8 +247,8 @@ def chat(user_id):
         if not conn:
             return "Ошибка подключения к базе данных.", 500
         cursor = conn.cursor(dictionary=True)
-        # Проверяем, существует ли пользователь
-        cursor.execute("SELECT name FROM users WHERE id = %s;", (user_id,))
+        # Проверяем, существует ли получатель
+        cursor.execute("SELECT username FROM users WHERE id = %s;", (user_id,))
         target_user = cursor.fetchone()
         if not target_user:
             return "Пользователь не найден.", 404
@@ -269,7 +269,12 @@ def chat(user_id):
         messages = cursor.fetchall()
         cursor.close()
         conn.close()
-        return render_template('chat.html', messages=messages, target_user=target_user['name'])
+        return render_template(
+            'chat.html',
+            messages=messages,
+            target_user=target_user['username'],  # Здесь используем правильное поле
+            current_user_id=current_user_id
+        )
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка при загрузке чата.", 500
