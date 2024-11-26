@@ -47,8 +47,11 @@
     // Получение сообщений через WebSocket
     socket.on('receive_message', function(data) {
         const newMessage = document.createElement('div');
-        newMessage.className = data.sender === "{{ session['username'] }}" ? 'message sent' : 'message received';
-        newMessage.innerHTML = `<p>${data.message}</p><span class="timestamp">${new Date().toLocaleString()}</span>`;
+        newMessage.className = data.sender_id === {{ current_user_id }} ? 'message sent' : 'message received';
+        newMessage.innerHTML = `
+            <p>${data.message}</p>
+            <span class="timestamp">${new Date(data.timestamp).toLocaleString()}</span>
+        `;
         chatHistory.appendChild(newMessage);
         chatHistory.scrollTop = chatHistory.scrollHeight; // Автопрокрутка вниз
     });
