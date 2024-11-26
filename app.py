@@ -300,28 +300,41 @@ def internal_server_error(e):
 def handle_send_message(data):
     """Отправка сообщения и уведомление другой стороны."""
     sender = session.get("username")
-    receiver = data.get("receiver")
+    receiver = data.get("receiver")  # Имя пользователя получателя
     message = data.get("message")
     if not sender or not receiver or not message:
-        return
+        return  # Если данные отсутствуют, ничего не делаем
+    
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
-        # Получаем ID отправителя и получателя
+        cursor = conn.cursor(dictionary=True)
+        
+        # Получаем ID отправителя
         cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
-        sender_id = cursor.fetchone()[0]
+        sender_row = cursor.fetchone()
+        if not sender_row:
+            raise ValueError("Отправитель не найден")
+        sender_id = sender_row['id']
+        
+        # Получаем ID получателя
         cursor.execute("SELECT id FROM users WHERE username = %s", (receiver,))
-        receiver_id = cursor.fetchone()[0]
+        receiver_row = cursor.fetchone()
+        if not receiver_row:
+            raise ValueError("Получатель не найден")
+        receiver_id = receiver_row['id']
+        
         # Вставляем сообщение в базу данных
         cursor.execute("""
-            INSERT INTO messages (sender_id, receiver_id, message, timestamp)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO messages (sender_id, receiver_id, message)
+            VALUES (%s, %s, %s)
         """, (sender_id, receiver_id, message))
         conn.commit()
-        # Отправляем сообщение другому пользователю
-        emit('receive_message', {'sender': sender, 'message': message}, room=receiver_id)
+        
+        # Отправляем сообщение всем в комнате
+        room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
+        emit('receive_message', {'sender': sender, 'message': message}, room=room)
     except Exception as e:
-        print(f"Ошибка при сохранении сообщения: {e}")
+        print(f"Ошибка при обработке сообщения: {e}")
     finally:
         cursor.close()
         conn.close()
@@ -356,10 +369,34 @@ def on_connect():
 
 @socketio.on('join_chat')
 def join_chat(data):
-    """Когда пользователь заходит в чат."""
-    chat_id = data['chat_id']
-    join_room(f'chat_{chat_id}')
-    print(f"User {session.get('username')} joined chat {chat_id}")
+    """Добавление пользователя в комнату чата."""
+    username = session.get('username')
+    target_user_id = data.get('user_id')  # ID другого пользователя
+    if not username or not target_user_id:
+        return
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Получаем ID текущего пользователя
+        cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            raise ValueError("Текущий пользователь не найден")
+        current_user_id = user_row['id']
+        
+        # Формируем комнату для обоих пользователей
+        room = f"chat_{min(current_user_id, target_user_id)}_{max(current_user_id, target_user_id)}"
+        join_room(room)
+        
+        # Уведомляем других участников
+        emit('message', {'msg': f"{username} присоединился к чату."}, room=room)
+    except Exception as e:
+        print(f"Ошибка при добавлении в комнату: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
 @socketio.on('leave_chat')
 def leave_chat(data):
