@@ -180,7 +180,7 @@ def find_users_with_common_interests(user_id):
     user_interests = set(user_interests['interests'].split(','))
 
     # Поиск других пользователей с совпадающими интересами
-    cursor.execute("SELECT id, name, interests FROM users WHERE id != %s;", (user_id,))
+    cursor.execute("SELECT id, username, interests FROM users WHERE id != %s;", (user_id,))
     all_users = cursor.fetchall()
 
     matches = []
@@ -190,7 +190,7 @@ def find_users_with_common_interests(user_id):
         if common_interests:
             matches.append({
                 'id': other_user['id'],
-                'name': other_user['name'],
+                'name': other_user['username'],
                 'common_interests': ', '.join(common_interests)
             })
 
@@ -202,7 +202,7 @@ def find_users_with_common_interests(user_id):
 def login():
     """Страница входа пользователя."""
     if request.method == 'POST':
-        name = request.form.get('name')
+        name = request.form.get('username')
         password = request.form.get('password')
 
         if not name or not password:
@@ -291,8 +291,8 @@ def chat(user_id):
         cursor.execute("""
             SELECT sender_id, message, timestamp 
             FROM messages 
-            WHERE (sender_id = (SELECT id FROM users WHERE name = %s) AND receiver_id = %s)
-               OR (sender_id = %s AND receiver_id = (SELECT id FROM users WHERE name = %s))
+            WHERE (sender_id = (SELECT id FROM users WHERE username = %s) AND receiver_id = %s)
+               OR (sender_id = %s AND receiver_id = (SELECT id FROM users WHERE username = %s))
             ORDER BY timestamp
         """, (current_user, user_id, user_id, current_user))
         messages = cursor.fetchall()
@@ -349,8 +349,8 @@ def handle_message(data):
         cursor.execute("""
             INSERT INTO messages (sender_id, receiver_id, message)
             VALUES (
-                (SELECT id FROM users WHERE name = %s),
-                (SELECT id FROM users WHERE name = %s),
+                (SELECT id FROM users WHERE username = %s),
+                (SELECT id FROM users WHERE username = %s),
                 %s
             );
         """, (sender, receiver, message))
