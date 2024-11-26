@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import mysql.connector
 import os
 import redis
+
 # --- Конфигурация приложения ---
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
@@ -36,6 +37,7 @@ def get_db_connection():
     except mysql.connector.Error as e:
         print(f"Ошибка подключения к MySQL: {e}")
         return None
+        
 def init_db():
     """Инициализация базы данных."""
     try:
@@ -233,7 +235,7 @@ def find_matches():
         return render_template('find_matches.html', title="Найти совпадения", matches=matches)
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
-        return "Произошла ошибка при поиске совпадений.", 500
+        return "Ошибка поиска совпадений.", 500
 
 #для создания чата
 @app.route('/chat/<int:user_id>', methods=['GET'])
@@ -324,17 +326,22 @@ def handle_send_message(data):
         conn.close()
 
 @socketio.on('join')
-def handle_join(data):
-    """Подключение пользователя к комнате чата."""
-    sender = session.get("username")
-    receiver = data.get("receiver")
-    if not sender or not receiver:
-        return
+def on_join(data):
+    """Добавление пользователя в чат по интересам."""
+    username = session.get('username')
+    if username:
+        room = f"{username}_chat"
+        join_room(room)
+        emit('message', {'msg': f"{username} присоединился к чату."}, room=room)
 
-    # Создаем уникальное имя комнаты
-    room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
-    join_room(room)
-    emit('room_joined', {'room': room}, room=room)
+@socketio.on('message')
+def handle_message(data):
+    """Обработка входящих сообщений в чатах."""
+    username = session.get('username')
+    if username:
+        message = data.get('msg')
+        room = f"{username}_chat"
+        emit('message', {'msg': f"{username}: {message}"}, room=room)
 
 # --- Запуск ---
 if __name__ == '__main__':
