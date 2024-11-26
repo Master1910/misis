@@ -202,22 +202,23 @@ def find_users_with_common_interests(user_id):
 def login():
     """Страница входа пользователя."""
     if request.method == 'POST':
-        name = request.form.get('username')
+        # Правильные названия для полей из формы
+        username = request.form.get('username')  # Изменено на 'username'
         password = request.form.get('password')
-
-        if not name or not password:
-            return "Имя и пароль обязательны.", 400
-
+        # Проверяем, что данные заполнены
+        if not username or not password:
+            return "Имя пользователя и пароль обязательны.", 400
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT password FROM users WHERE username = %s;", (name,))
-            user = cursor.fetchone()
+            # Поиск пользователя в базе данных по username
+            cursor.execute("SELECT password FROM users WHERE username = %s;", (username,))
+            user = cursor.fetchone()  # Вернёт None, если пользователь не найден
             cursor.close()
             conn.close()
-
+            # Проверяем, найден ли пользователь, и совпадает ли пароль
             if user and check_password_hash(user[0], password):
-                session['username'] = name
+                session['username'] = username
                 return redirect(url_for('home'))
             else:
                 return "Неверное имя пользователя или пароль.", 400
