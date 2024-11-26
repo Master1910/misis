@@ -298,12 +298,13 @@ def internal_server_error(e):
 # --- WebSocket ---
 @socketio.on('send_message')
 def handle_send_message(data):
-    """Отправка сообщения и уведомление другой стороны."""
+    """Обработка отправки сообщения"""
     sender = session.get("username")
-    receiver = data.get("receiver")  # Имя пользователя получателя
+    receiver = data.get("receiver")  # Имя получателя
     message = data.get("message")
     if not sender or not receiver or not message:
-        return  # Если данные отсутствуют, ничего не делаем
+        print("Ошибка: данные отправки сообщения неполные.")
+        return
     
     try:
         conn = get_db_connection()
@@ -311,30 +312,25 @@ def handle_send_message(data):
         
         # Получаем ID отправителя
         cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
-        sender_row = cursor.fetchone()
-        if not sender_row:
-            raise ValueError("Отправитель не найден")
-        sender_id = sender_row['id']
+        sender_id = cursor.fetchone()['id']
         
         # Получаем ID получателя
         cursor.execute("SELECT id FROM users WHERE username = %s", (receiver,))
-        receiver_row = cursor.fetchone()
-        if not receiver_row:
-            raise ValueError("Получатель не найден")
-        receiver_id = receiver_row['id']
+        receiver_id = cursor.fetchone()['id']
         
-        # Вставляем сообщение в базу данных
+        # Вставляем сообщение
         cursor.execute("""
-            INSERT INTO messages (sender_id, receiver_id, message)
-            VALUES (%s, %s, %s)
+            INSERT INTO messages (sender_id, receiver_id, message, timestamp)
+            VALUES (%s, %s, %s, NOW())
         """, (sender_id, receiver_id, message))
         conn.commit()
+        print(f"Сообщение от {sender} сохранено в БД.")
         
-        # Отправляем сообщение всем в комнате
+        # Формируем комнату
         room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
         emit('receive_message', {'sender': sender, 'message': message}, room=room)
     except Exception as e:
-        print(f"Ошибка при обработке сообщения: {e}")
+        print(f"Ошибка при отправке сообщения: {e}")
     finally:
         cursor.close()
         conn.close()
