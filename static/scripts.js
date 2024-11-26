@@ -8,47 +8,53 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => (container.style.opacity = 1), 50);
     });
 
-    // Инициализация истории чата
+    // Инициализация элементов чата
     const chatHistory = document.querySelector(".chat-history");
-    const chatForm = document.querySelector(".chat-form");
-    const chatInput = document.querySelector(".chat-input");
+    const chatForm = document.querySelector("#chat-form");
+    const chatInput = document.querySelector("#message-input");
+
+    // Подключение к WebSocket
+    const socket = io.connect();
 
     if (chatForm && chatHistory && chatInput) {
+        // Обработка отправки сообщения
         chatForm.addEventListener("submit", (event) => {
             event.preventDefault();
             const messageText = chatInput.value.trim();
             if (messageText) {
+                // Отправка сообщения через WebSocket
+                socket.emit("send_message", {
+                    receiver: targetUser, // Целевой пользователь
+                    message: messageText
+                });
+
+                // Локальное добавление отправленного сообщения
                 addMessageToChat("Вы", messageText, true);
                 chatInput.value = "";
-
-                // Имитируем ответ от бота
-                setTimeout(() => {
-                    addMessageToChat("Бот", "Ваше сообщение обработано!", false);
-                }, 1000);
             }
+        });
+
+        // Обработка полученных сообщений
+        socket.on("receive_message", (data) => {
+            addMessageToChat(data.sender, data.message, false);
         });
     }
 
     // Прокрутка вниз истории чата
     function scrollChatToBottom() {
-        chatHistory.scrollTop = chatHistory.scrollHeight;
+        if (chatHistory) {
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
     }
 
     // Добавление сообщения в чат
     function addMessageToChat(sender, text, isUser) {
         const message = document.createElement("div");
-        message.className = "message";
+        message.className = isUser ? "message sent" : "message received";
         message.innerHTML = `
-            <strong>${sender}:</strong> ${text}
-            <span class="timestamp">${new Date().toLocaleTimeString()}</span>
+            <p><strong>${sender}:</strong> ${text}</p>
+            <span class="timestamp">${new Date().toLocaleString()}</span>
         `;
-
-        if (isUser) {
-            message.style.alignSelf = "flex-end"; // Сообщения пользователя справа
-        } else {
-            message.style.alignSelf = "flex-start"; // Сообщения бота слева
-        }
-
         chatHistory.appendChild(message);
         scrollChatToBottom();
     }
