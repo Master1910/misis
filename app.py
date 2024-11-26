@@ -267,10 +267,16 @@ def chat(user_id):
 
         cursor.close()
         conn.close()
+
+        # Форматируем временные метки сообщений перед передачей на шаблон
+        for message in messages:
+            message['timestamp'] = message['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+
         return render_template('chat.html', messages=messages, target_user=target_user['username'])
     except Exception as e:
         print(f"Ошибка при загрузке чата: {e}")
         return f"Ошибка: {e}", 500
+
 
 
 @app.route('/logout')
@@ -312,11 +318,14 @@ def handle_send_message(data):
         """, (sender_id, receiver_id, message))
         conn.commit()
 
+        # Формируем временную метку с использованием datetime
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         emit('receive_message', {
             'sender_id': sender_id,
             'receiver_id': receiver_id,
             'message': message,
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'timestamp': timestamp  # Передаем уже отформатированную метку времени
         }, broadcast=True)
     except Exception as e:
         print(f"Ошибка при отправке сообщения: {e}")
