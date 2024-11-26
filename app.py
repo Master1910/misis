@@ -165,29 +165,32 @@ def register():
 
 
 def find_users_with_common_interests(user_id):
-    """Поиск пользователей с общими интересами для MySQL."""
+    """Поиск пользователей с общими интересами."""
     try:
         conn = get_db_connection()
         if not conn:
             return []
-        cursor = conn.cursor(dictionary=True)  # `dictionary=True` возвращает результаты как словарь
+        cursor = conn.cursor(dictionary=True)  # Используем словарь для удобства работы с результатами
         # Получение интересов текущего пользователя
         cursor.execute("SELECT interests FROM users WHERE id = %s;", (user_id,))
         user_interests_row = cursor.fetchone()
         if not user_interests_row or not user_interests_row['interests']:
             return []
-        user_interests = set(user_interests_row['interests'].split(','))
+        user_interests = set(user_interests_row['interests'].split(','))  # Разделяем интересы на элементы
         # Поиск других пользователей с совпадающими интересами
-        cursor.execute("SELECT id, name, interests FROM users WHERE id != %s;", (user_id,))
+        cursor.execute("SELECT id, username, interests FROM users WHERE id != %s;", (user_id,))
         all_users = cursor.fetchall()
         matches = []
         for other_user in all_users:
-            other_interests_set = set(other_user['interests'].split(',')) if other_user['interests'] else set()
+            # Убедимся, что у других пользователей есть интересы
+            if not other_user['interests']:
+                continue
+            other_interests_set = set(other_user['interests'].split(','))
             common_interests = user_interests.intersection(other_interests_set)
             if common_interests:
                 matches.append({
                     'id': other_user['id'],
-                    'name': other_user['name'],
+                    'username': other_user['username'],  # Используем username
                     'common_interests': ', '.join(common_interests)
                 })
         cursor.close()
@@ -196,6 +199,7 @@ def find_users_with_common_interests(user_id):
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return []
+
 
 
 
