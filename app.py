@@ -364,15 +364,15 @@ def handle_send_message(data):
 
 
 @socketio.on('join')
-def on_join(data):
-    """Подключение к уникальной комнате."""
+def handle_join(data):
+    """Подключение пользователя к комнате чата."""
     sender = session.get("username")
-    receiver = data['receiver']
+    receiver = data.get("receiver")
     
     if not sender or not receiver:
         return
 
-    # Создаем уникальное имя комнаты для пары пользователей
+    # Создаем уникальное имя комнаты
     room = f"chat_{min(sender, receiver)}_{max(sender, receiver)}"
     join_room(room)
     emit('room_joined', {'room': room}, room=room)
