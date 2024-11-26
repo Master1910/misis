@@ -47,7 +47,6 @@ def init_db():
             print("Не удалось подключиться к базе данных.")
             return
         cursor = conn.cursor()
-        # Создание таблиц
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -58,7 +57,7 @@ def init_db():
             );
         ''')
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS messages (
+            CREATE TABLE IF NOT EXISTS mess (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 sender_id INT NOT NULL,
                 receiver_id INT NOT NULL,
@@ -241,33 +240,36 @@ def find_matches():
 #для создания чата
 @app.route('/chat/<int:user_id>', methods=['GET', 'POST'])
 def chat(user_id):
+    """Страница чата между двумя пользователями."""
     current_user = session.get("username")
     if not current_user:
         return redirect(url_for('login'))
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Получение информации о текущем и целевом пользователях
+        # Получение ID текущего пользователя
         cursor.execute("SELECT id FROM users WHERE username = %s;", (current_user,))
         current_user_row = cursor.fetchone()
         if not current_user_row:
             return "Текущий пользователь не найден.", 404
         current_user_id = current_user_row['id']
 
+        # Получение имени целевого пользователя
         cursor.execute("SELECT username FROM users WHERE id = %s;", (user_id,))
         target_user = cursor.fetchone()
         if not target_user:
             return "Пользователь не найден.", 404
 
-        # Получение истории сообщений
-        cursor.execute("""
+        # Получение истории сообщений из таблицы mess
+        cursor.execute('''
             SELECT sender_id, message, timestamp 
-            FROM messages 
-            WHERE (sender_id = %s AND receiver_id = %s)
+            FROM mess 
+            WHERE (sender_id = %s AND receiver_id = %s) 
                OR (sender_id = %s AND receiver_id = %s)
             ORDER BY timestamp
-        """, (current_user_id, user_id, user_id, current_user_id))
+        ''', (current_user_id, user_id, user_id, current_user_id))
         messages = cursor.fetchall()
 
         cursor.close()
@@ -281,7 +283,6 @@ def chat(user_id):
     except Exception as e:
         print(f"Ошибка при загрузке чата: {e}")
         return f"Ошибка: {e}", 500
-
 @app.route('/logout')
 def logout():
     """Выход из системы."""
@@ -301,11 +302,12 @@ def internal_server_error(e):
 # --- WebSocket ---
 @socketio.on('send_message')
 def handle_send_message(data):
+    """Обработка отправки сообщений через WebSocket."""
     sender = session.get("username")
-    receiver = data.get("receiver")
+    receiver_id = data.get("receiver_id")
     message = data.get("message")
 
-    if not sender or not receiver or not message:
+    if not sender or not receiver_id or not message:
         return
 
     try:
@@ -316,18 +318,14 @@ def handle_send_message(data):
         cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
         sender_id = cursor.fetchone()['id']
 
-        # Получение ID получателя
-        cursor.execute("SELECT id FROM users WHERE username = %s", (receiver,))
-        receiver_id = cursor.fetchone()['id']
-
-        # Сохранение сообщения в базе данных
-        cursor.execute("""
-            INSERT INTO messages (sender_id, receiver_id, message, timestamp)
+        # Сохранение сообщения в таблицу mess
+        cursor.execute('''
+            INSERT INTO mess (sender_id, receiver_id, message, timestamp)
             VALUES (%s, %s, %s, NOW())
-        """, (sender_id, receiver_id, message))
+        ''', (sender_id, receiver_id, message))
         conn.commit()
 
-        # Отправка сообщения получателям
+        # Отправка сообщения через WebSocket
         emit('receive_message', {
             'sender_id': sender_id,
             'receiver_id': receiver_id,
