@@ -314,8 +314,8 @@ def handle_send_message(data):
         receiver_id = cursor.fetchone()[0]
         # Вставляем сообщение в базу данных
         cursor.execute("""
-            INSERT INTO messages (sender_id, receiver_id, message)
-            VALUES (%s, %s, %s)
+            INSERT INTO messages (sender_id, receiver_id, message, timestamp)
+            VALUES (%s, %s, %s, %s)
         """, (sender_id, receiver_id, message))
         conn.commit()
         # Отправляем сообщение другому пользователю
