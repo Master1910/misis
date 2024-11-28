@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!chatHistory || !chatForm || !chatInput) {
         console.error("Не все элементы чата найдены на странице. Проверьте HTML.");
+        return;
     }
 
     // Получаем идентификатор текущего чата из контекста страницы
@@ -24,26 +25,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const socket = io.connect();
 
     // Обработка отправки сообщения
-    if (chatForm) {
-        chatForm.addEventListener("submit", (event) => {
-            event.preventDefault();
-            const messageText = chatInput.value.trim();
+    chatForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const messageText = chatInput.value.trim();
 
-            if (messageText) {
-                // Отправка сообщения через WebSocket
-                socket.emit("send_message", {
-                    chat_id: chatId, // Идентификатор чата
-                    message: messageText
-                });
+        if (messageText) {
+            // Отправка сообщения через WebSocket
+            socket.emit("send_message", {
+                chat_id: chatId, // Идентификатор чата
+                message: messageText
+            });
 
-                // Локальное добавление отправленного сообщения
-                addMessageToChat("Вы", messageText, true);
-                chatInput.value = "";
-            } else {
-                console.warn("Пустое сообщение нельзя отправить.");
-            }
-        });
-    }
+            // Локальное добавление отправленного сообщения
+            addMessageToChat("Вы", messageText, true);
+            chatInput.value = "";
+        } else {
+            console.warn("Пустое сообщение нельзя отправить.");
+        }
+    });
 
     // Обработка входящих сообщений
     socket.on("receive_message", (data) => {
@@ -83,11 +82,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Уведомляем сервер о присоединении к чату
-    if (chatId) {
-        socket.emit("join_chat", {
-            chat_id: chatId // Идентификатор чата
-        });
-    }
+    socket.emit("join_chat", {
+        chat_id: chatId // Идентификатор чата
+    });
 
     // Обработка системных сообщений
     socket.on("message", (data) => {
@@ -95,42 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
             addMessageToChat("Система", data.msg, false);
         }
     });
-
-    // Обработка кнопок для создания нового чата
-    const createChatButtons = document.querySelectorAll(".chat-btn");
-    createChatButtons.forEach((button) => {
-        button.addEventListener("click", (event) => {
-            event.preventDefault();
-
-            // Получение идентификатора целевого пользователя из атрибута data-user-id
-            const targetUserId = button.dataset.userId;
-
-            if (targetUserId) {
-                // Запрос на создание чата
-                fetch("/start_chat", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ user_1_id: "{{ current_user_id }}", user_2_id: targetUserId }),
-                })
-                    .then((response) => response.json())
-                    .then((data) => {
-                        if (data.chat_id) {
-                            // Перенаправление в созданный чат
-                            window.location.href = `/chat/${data.chat_id}`;
-                        } else {
-                            console.error("Ошибка создания чата:", data);
-                        }
-                    })
-                    .catch((error) => {
-                        console.error("Ошибка запроса на создание чата:", error);
-                    });
-            } else {
-                console.error("Не удалось определить идентификатор целевого пользователя.");
-            }
-        });
-    });
+});
 
 // Функция открытия/закрытия бокового меню
 function toggleSidebar() {
