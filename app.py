@@ -355,10 +355,18 @@ def handle_send_message(data):
                 print(f"Не найден получатель с ID {receiver_id}")
                 return
 
-            # Сохраняем сообщение отправителя в базу данных
+            # Определяем, в какую таблицу записывать
+            if sender_id < receiver_id:
+                # Записываем в таблицу chat_1
+                cursor.execute("""INSERT INTO chat_1 (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
+            else:
+                # Записываем в таблицу chat_2
+                cursor.execute("""INSERT INTO chat_2 (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
+
+            # Сохраняем сообщение в основную таблицу messs
             cursor.execute("""INSERT INTO messs (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
             conn.commit()
-            print("Сообщение отправителя успешно добавлено в базу данных.")
+            print("Сообщение успешно добавлено в базы данных.")
 
             # Уведомление участников чата
             room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
