@@ -126,7 +126,7 @@ function toggleSidebar() {
 }
 
 // Улучшенная анимация для плавной прокрутки чата
-const chatHistoryContainer = document.querySelector(".chat-history");
+/*const chatHistoryContainer = document.querySelector(".chat-history");
 if (chatHistoryContainer) {
     chatHistoryContainer.addEventListener("scroll", () => {
         const scrollTop = chatHistoryContainer.scrollTop;
