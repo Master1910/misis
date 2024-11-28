@@ -93,19 +93,6 @@ document.addEventListener("DOMContentLoaded", () => {
             addMessageToChat("Система", data.msg, false);
         }
     });
-
-    // Улучшенная анимация для плавной прокрутки чата
-    chatHistory.addEventListener("scroll", () => {
-        const scrollTop = chatHistory.scrollTop;
-        const scrollHeight = chatHistory.scrollHeight;
-        const clientHeight = chatHistory.clientHeight;
-
-        if (scrollTop + clientHeight >= scrollHeight - 5) {
-            chatHistory.style.scrollBehavior = "smooth";
-        } else {
-            chatHistory.style.scrollBehavior = "auto";
-        }
-    });
 });
 
 // Функция открытия/закрытия бокового меню
@@ -126,7 +113,7 @@ function toggleSidebar() {
 }
 
 // Улучшенная анимация для плавной прокрутки чата
-/*const chatHistoryContainer = document.querySelector(".chat-history");
+const chatHistoryContainer = document.querySelector(".chat-history");
 if (chatHistoryContainer) {
     chatHistoryContainer.addEventListener("scroll", () => {
         const scrollTop = chatHistoryContainer.scrollTop;
