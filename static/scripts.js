@@ -4,35 +4,28 @@ document.addEventListener("DOMContentLoaded", () => {
     // Анимация плавного появления содержимого
     const fadeContainers = document.querySelectorAll('.fade');
     fadeContainers.forEach(container => {
-        container.style.opacity = 0;
-        setTimeout(() => (container.style.opacity = 1), 50);
+        container.style.opacity = "0";
+        setTimeout(() => {
+            container.style.transition = "opacity 0.5s";
+            container.style.opacity = "1";
+        }, 50);
     });
 
     // Инициализация элементов чата
     const chatHistory = document.querySelector(".chat-history");
     const chatForm = document.querySelector("#chat-form");
     const chatInput = document.querySelector("#message-input");
+    const chatId = "{{ chat_id | default('') }}";
 
-    if (chatHistory && chatForm && chatInput) {
-        // Получаем идентификатор текущего чата из контекста страницы
-        const chatId = "{{ chat_id }}"; // Передаётся из Flask
-
-        // Подключение к WebSocket
+    if (chatHistory && chatForm && chatInput && chatId) {
         const socket = io.connect();
 
-        // Обработка отправки сообщения
         chatForm.addEventListener("submit", (event) => {
             event.preventDefault();
             const messageText = chatInput.value.trim();
 
             if (messageText) {
-                // Отправка сообщения через WebSocket
-                socket.emit("send_message", {
-                    chat_id: chatId, // Идентификатор чата
-                    message: messageText
-                });
-
-                // Локальное добавление отправленного сообщения
+                socket.emit("send_message", { chat_id: chatId, message: messageText });
                 addMessageToChat("Вы", messageText, true);
                 chatInput.value = "";
             } else {
@@ -44,8 +37,6 @@ document.addEventListener("DOMContentLoaded", () => {
         socket.on("receive_message", (data) => {
             if (data && data.message && data.sender) {
                 addMessageToChat(data.sender, data.message, false);
-            } else {
-                console.warn("Получено некорректное сообщение:", data);
             }
         });
 
@@ -60,10 +51,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Добавление сообщения в чат
         function addMessageToChat(sender, text, isUser) {
-            const message = document.createElement("div");
-            message.className = isUser ? "message sent" : "message received";
-            message.innerHTML = `<p><strong>${sender}:</strong> ${text}</p>`;
-            chatHistory.appendChild(message);
+            const message = `
+                <div class="${isUser ? 'message sent' : 'message received'}">
+                    <p><strong>${sender}:</strong> ${text}</p>
+                </div>
+            `;
+            chatHistory.insertAdjacentHTML('beforeend', message);
             scrollChatToBottom();
         }
 
