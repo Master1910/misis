@@ -67,9 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function addMessageToChat(sender, text, isUser) {
         const message = document.createElement("div");
         message.className = isUser ? "message sent" : "message received";
-        message.innerHTML = `
-            <p><strong>${sender}:</strong> ${text}</p>
-        `;
+        message.innerHTML = ` <p><strong>${sender}:</strong> ${text}</p> `;
         chatHistory.appendChild(message);
         scrollChatToBottom();
     }
@@ -93,6 +91,19 @@ document.addEventListener("DOMContentLoaded", () => {
     socket.on("message", (data) => {
         if (data && data.msg) {
             addMessageToChat("Система", data.msg, false);
+        }
+    });
+
+    // Улучшенная анимация для плавной прокрутки чата
+    chatHistory.addEventListener("scroll", () => {
+        const scrollTop = chatHistory.scrollTop;
+        const scrollHeight = chatHistory.scrollHeight;
+        const clientHeight = chatHistory.clientHeight;
+
+        if (scrollTop + clientHeight >= scrollHeight - 5) {
+            chatHistory.style.scrollBehavior = "smooth";
+        } else {
+            chatHistory.style.scrollBehavior = "auto";
         }
     });
 });
