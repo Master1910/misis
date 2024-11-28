@@ -18,8 +18,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    // Получаем имя целевого пользователя из контекста страницы
-    const targetUser = "{{ target_user }}"; // Передается из Flask
+    // Получаем идентификатор текущего чата из контекста страницы
+    const chatId = "{{ chat_id }}"; // Передаётся из Flask
 
     // Подключение к WebSocket
     const socket = io.connect();
@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (messageText) {
             // Отправка сообщения через WebSocket
             socket.emit("send_message", {
-                receiver: targetUser, // Целевой пользователь
+                chat_id: chatId, // Идентификатор чата
                 message: messageText
             });
 
@@ -46,9 +46,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Обработка входящих сообщений
     socket.on("receive_message", (data) => {
-        if (data && data.message) {
-            const sender = data.sender || "Неизвестно";
-            addMessageToChat(sender, data.message, false);
+        if (data && data.message && data.sender) {
+            addMessageToChat(data.sender, data.message, false);
         } else {
             console.warn("Получено некорректное сообщение:", data);
         }
@@ -67,7 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function addMessageToChat(sender, text, isUser) {
         const message = document.createElement("div");
         message.className = isUser ? "message sent" : "message received";
-        message.innerHTML = ` <p><strong>${sender}:</strong> ${text}</p> `;
+        message.innerHTML = `<p><strong>${sender}:</strong> ${text}</p>`;
         chatHistory.appendChild(message);
         scrollChatToBottom();
     }
@@ -82,9 +81,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Сообщение о входе пользователя в чат
+    // Уведомляем сервер о присоединении к чату
     socket.emit("join_chat", {
-        chat_id: targetUser // Идентификатор чата
+        chat_id: chatId // Идентификатор чата
     });
 
     // Обработка системных сообщений
