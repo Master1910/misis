@@ -22,7 +22,8 @@
 </div>
 
 <script>
-    function startChat(user1_id, user2_id) {
+    function startChat(user_1_id, user_2_id) {
+        console.log("Старт чата для:", user_1_id, user_2_id); // Отладка
         fetch("{{ url_for('start_chat') }}", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -31,12 +32,17 @@
         .then(response => response.json())
         .then(data => {
             if (data.chat_id) {
+                console.log("Чат создан, ID:", data.chat_id); // Отладка
                 window.location.href = `/chat/${data.chat_id}`; // Перенаправление в чат
             } else {
-                console.error("Ошибка создания чата.");
+                console.error("Ошибка создания чата:", data);
+                alert("Не удалось создать чат. Попробуйте позже.");
             }
         })
-        .catch(error => console.error("Ошибка отправки запроса:", error));
+        .catch(error => {
+            console.error("Ошибка отправки запроса:", error);
+            alert("Произошла ошибка. Проверьте подключение к серверу.");
+        });
     }
 </script>
 {% endblock %}
