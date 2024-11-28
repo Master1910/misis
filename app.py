@@ -251,7 +251,7 @@ def find_matches():
             return "Пользователь не найден в базе данных.", 404
         user_id = user_row[0]
         matches = find_users_with_common_interests(user_id)
-        return render_template('find_matches.html', title="Найти совпадения", matches=matches)
+        return render_template('find_matches.html', matches=matches, current_user_id=current_user_id)
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка поиска совпадений.", 500
