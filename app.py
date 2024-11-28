@@ -256,36 +256,48 @@ def chat(user_id):
 
         # Получение ID текущего пользователя
         cursor.execute("SELECT id FROM users WHERE username = %s", (current_user,))
-        current_user_id = cursor.fetchone()["id"]
+        current_user_row = cursor.fetchone()
+        
+        if not current_user_row:
+            print(f"Пользователь с именем {current_user} не найден в базе данных.")
+            return "Пользователь не найден.", 404
+
+        current_user_id = current_user_row["id"]
+        print(f"Текущий пользователь ID: {current_user_id}")
 
         # Получение информации о собеседнике
         cursor.execute("SELECT username FROM users WHERE id = %s", (user_id,))
         target_user = cursor.fetchone()
+        
         if not target_user:
+            print(f"Пользователь с ID {user_id} не найден в базе данных.")
             return "Пользователь не найден.", 404
 
+        target_user_username = target_user["username"]
+        print(f"Собеседник: {target_user_username}")
+
         # Получение сообщений между пользователями
-        cursor.execute('''
-            SELECT sender_id, message
+        cursor.execute(''' 
+            SELECT sender_id, message 
             FROM messs
-            WHERE (sender_id = %s AND receiver_id = %s)
+            WHERE (sender_id = %s AND receiver_id = %s) 
                OR (sender_id = %s AND receiver_id = %s)
         ''', (current_user_id, user_id, user_id, current_user_id))
+        
         messages = cursor.fetchall()
+        print(f"Сообщения между пользователями: {messages}")
 
-        # Добавление пользователя в комнату чата
-        room = f"chat_{min(current_user_id, user_id)}_{max(current_user_id, user_id)}"
-        join_room(room)
-
-        return render_template("chat.html", messages=messages, target_user=target_user["username"], current_user_id=current_user_id)
+        return render_template("chat.html", messages=messages, target_user=target_user_username, current_user_id=current_user_id)
+    
     except Exception as e:
-        print(f"Ошибка: {e}")
+        print(f"Ошибка при обработке чата: {e}")
         return f"Ошибка: {e}", 500
+
     finally:
-        cursor.close()
-        conn.close()
-
-
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 @app.route('/logout')
 def logout():
