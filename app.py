@@ -259,33 +259,43 @@ def find_matches():
 @app.route('/start_chat', methods=['POST'])
 def start_chat():
     data = request.json
-    user_1_id = data.get('user_1_id')  # Получение user1_id из данных запроса
-    user_2_id = data.get('user_2_id')  # Получение user2_id из данных запроса
-    
-    # Исправьте имя таблицы или столбца, если проблема в этом.
-    cursor = mysql.connection.cursor()
-    
-    # Убедитесь, что в таблице есть столбцы user1_id и user2_id
-    query = """
-        SELECT id FROM chatss
-        WHERE (user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s)
-    """
-    cursor.execute(query, (user_1_id, user_2_id, user_2_id, user_1_id))
-    existing_chat = cursor.fetchone()
-    
-    if existing_chat:
-        chat_id = existing_chat[0]
-    else:
-        # Добавьте строку в таблицу "chats", если столбцы user1_id и user2_id действительно есть
-        insert_query = """
-            INSERT INTO chatss (user_1_id, user_2_id, active) VALUES (%s, %s, 0)
-        """
-        cursor.execute(insert_query, (user_1_id, user_2_id))
-        mysql.connection.commit()
-        chat_id = cursor.lastrowid
 
-    cursor.close()
-    return jsonify({'chat_id': chat_id})
+    # Проверка входных данных
+    user_1_id = data.get('user_1_id')
+    user_2_id = data.get('user_2_id')
+    if not user_1_id or not user_2_id:
+        return jsonify({'error': 'Некорректные данные.'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Проверяем существование чата
+        query = """
+            SELECT id FROM chatss
+            WHERE (user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s)
+        """
+        cursor.execute(query, (user_1_id, user_2_id, user_2_id, user_1_id))
+        existing_chat = cursor.fetchone()
+
+        if existing_chat:
+            chat_id = existing_chat['id']
+        else:
+            # Создание нового чата
+            insert_query = """
+                INSERT INTO chatss (user_1_id, user_2_id, active) VALUES (%s, %s, 0)
+            """
+            cursor.execute(insert_query, (user_1_id, user_2_id))
+            conn.commit()
+            chat_id = cursor.lastrowid
+
+        return jsonify({'chat_id': chat_id}), 200
+    except Exception as e:
+        print(f"Ошибка в start_chat: {e}")
+        return jsonify({'error': 'Ошибка сервера.'}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 
 
