@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_session import Session
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import SocketIO, join_room, emit
 from werkzeug.security import generate_password_hash, check_password_hash
 import mysql.connector
 import os
@@ -329,7 +329,7 @@ def handle_send_message(data):
         """, (sender_id, receiver_id, message))
         conn.commit()
 
-        # Уведомление участников чата (отправка сообщения в соответствующую комнату)
+        # Уведомление участников чата
         room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
         emit("receive_message", {
             "sender_id": sender_id,
@@ -341,8 +341,6 @@ def handle_send_message(data):
     finally:
         cursor.close()
         conn.close()
-
-
 
 # WebSocket: добавление пользователя в комнату
 @socketio.on("join_chat")
@@ -364,6 +362,8 @@ def join_chat(data):
 
         # Формирование имени комнаты
         room = f"chat_{min(current_user_id, target_user_id)}_{max(current_user_id, target_user_id)}"
+        
+        # Подключаем пользователя к комнате
         join_room(room)
 
         # Уведомление участников
@@ -373,6 +373,8 @@ def join_chat(data):
     finally:
         cursor.close()
         conn.close()
+
+
 
 @socketio.on("leave_chat")
 def leave_chat(data):
