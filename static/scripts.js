@@ -18,30 +18,11 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    // Получаем имя целевого пользователя и текущего пользователя из контекста страницы
+    // Получаем имя целевого пользователя из контекста страницы
     const targetUser = "{{ target_user }}"; // Передается из Flask
-    const currentUserId = {{ current_user_id }}; // Передается из Flask
-    console.log(`Текущий пользователь ID: ${currentUserId}, Целевой пользователь: ${targetUser}`);
 
     // Подключение к WebSocket
     const socket = io.connect();
-
-    // Обработка подключения WebSocket
-    socket.on("connect", () => {
-        console.log("WebSocket подключен");
-        // Сообщение о входе пользователя в чат
-        socket.emit("join_chat", {
-            chat_id: targetUser
-        });
-    });
-
-    socket.on("disconnect", () => {
-        console.warn("WebSocket отключен");
-    });
-
-    socket.on("connect_error", (error) => {
-        console.error("Ошибка подключения к WebSocket:", error);
-    });
 
     // Обработка отправки сообщения
     chatForm.addEventListener("submit", (event) => {
@@ -49,10 +30,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const messageText = chatInput.value.trim();
 
         if (messageText) {
-            console.log("Отправка сообщения:", messageText);
             // Отправка сообщения через WebSocket
             socket.emit("send_message", {
-                receiver: targetUser,
+                receiver: targetUser, // Целевой пользователь
                 message: messageText
             });
 
@@ -67,13 +47,20 @@ document.addEventListener("DOMContentLoaded", () => {
     // Обработка входящих сообщений
     socket.on("receive_message", (data) => {
         if (data && data.message) {
-            console.log("Получено сообщение:", data);
             const sender = data.sender || "Неизвестно";
-            const isFromCurrentUser = data.sender_id === currentUserId;
-            addMessageToChat(sender, data.message, isFromCurrentUser);
+            addMessageToChat(sender, data.message, false);
         } else {
             console.warn("Получено некорректное сообщение:", data);
         }
+    });
+
+    // Обработка ошибок подключения WebSocket
+    socket.on("connect_error", (error) => {
+        console.error("Ошибка подключения к WebSocket:", error);
+    });
+
+    socket.on("error", (error) => {
+        console.error("Ошибка WebSocket:", error);
     });
 
     // Добавление сообщения в чат
@@ -97,17 +84,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Сообщение о входе пользователя в чат
+    socket.emit("join_chat", {
+        chat_id: targetUser // Идентификатор чата
+    });
+
     // Обработка системных сообщений
     socket.on("message", (data) => {
         if (data && data.msg) {
-            console.log("Системное сообщение:", data.msg);
             addMessageToChat("Система", data.msg, false);
         }
-    });
-
-    // Обработка ошибок WebSocket
-    socket.on("error", (error) => {
-        console.error("Ошибка WebSocket:", error);
     });
 });
 
@@ -115,18 +101,15 @@ document.addEventListener("DOMContentLoaded", () => {
 function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
     const mainContent = document.getElementById("main-content");
-    
     if (!sidebar || !mainContent) {
-        console.error("Не найден элемент бокового меню или основного контента.");
+        console.error("Не найден элемент бокового меню.");
         return;
     }
-
-    // Проверяем текущее состояние ширины боковой панели
-    if (sidebar.classList.contains("open")) {
-        sidebar.classList.remove("open");
+    if (sidebar.style.width === "250px") {
+        sidebar.style.width = "0";
         mainContent.classList.remove("menu-open");
     } else {
-        sidebar.classList.add("open");
+        sidebar.style.width = "250px";
         mainContent.classList.add("menu-open");
     }
 }
