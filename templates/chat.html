@@ -8,7 +8,6 @@
             {% for message in messages %}
                 <div class="message {% if message.sender_id == current_user_id %}sent{% else %}received{% endif %}">
                     <p>{{ message.message }}</p>
-                    <span class="timestamp">{{ message.timestamp.strftime('%d.%m.%Y %H:%M:%S') }}</span>
                 </div>
             {% endfor %}
         </div>
@@ -59,18 +58,15 @@
         socket.on('receive_message', function (data) {
             if (data && data.message) {
                 const sender = data.sender || "Неизвестно";
-                addMessageToChat(sender, data.message, data.sender_id === currentUserId, data.timestamp);
+                addMessageToChat(sender, data.message, data.sender_id === currentUserId);
             }
         });
 
         // Функция добавления сообщения в чат
-        function addMessageToChat(sender, text, isUser, timestamp = null) {
+        function addMessageToChat(sender, text, isUser) {
             const newMessage = document.createElement('div');
             newMessage.className = isUser ? 'message sent' : 'message received';
-            newMessage.innerHTML = ` 
-                <p><strong>${sender}:</strong> ${text}</p>
-                <span class="timestamp">${timestamp ? new Date(timestamp).toLocaleString() : new Date().toLocaleString()}</span>
-            `;
+            newMessage.innerHTML = `<p><strong>${sender}:</strong> ${text}</p>`;
             chatHistory.appendChild(newMessage);
             scrollChatToBottom();
         }
