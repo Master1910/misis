@@ -304,9 +304,10 @@ def start_chat():
         if existing_chat:
             chat_id = existing_chat['id']
         else:
-            # Создание нового чата без указания поля 'data'
+            # Создание нового чата с указанием CURRENT_TIMESTAMP для 'data'
             insert_query = """
-                INSERT INTO chatss (user_1_id, user_2_id, active) VALUES (%s, %s, 0)
+                INSERT INTO chatss (user_1_id, user_2_id, active, data) 
+                VALUES (%s, %s, 0, CURRENT_TIMESTAMP)
             """
             cursor.execute(insert_query, (user_1_id, user_2_id))
             conn.commit()
@@ -319,6 +320,7 @@ def start_chat():
     finally:
         cursor.close()
         conn.close()
+
 
 
 @app.route('/create_chat/<int:target_user_id>', methods=['POST'])
