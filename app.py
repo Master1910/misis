@@ -33,6 +33,7 @@ def get_db_connection():
             password="lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym",
             database="railway"
         )
+        print("Соединение с базой данных успешно установлено.")
         return conn
     except mysql.connector.Error as e:
         print(f"Ошибка подключения к MySQL: {e}")
@@ -299,6 +300,7 @@ def chat(user_id):
         if conn:
             conn.close()
 
+
 @app.route('/logout')
 def logout():
     """Выход из системы."""
@@ -323,23 +325,26 @@ def handle_send_message(data):
     receiver_id = data.get("receiver_id")
     message = data.get("message")
 
+    # Добавляем отладочные сообщения
+    print(f"Получены данные для отправки сообщения: sender: {sender}, receiver_id: {receiver_id}, message: {message}")
+
     if not sender or not receiver_id or not message:
+        print("Ошибка: Неверные данные для отправки сообщения.")
         return
 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Получение ID отправителя
+        # Получаем ID отправителя
         cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
         sender_id = cursor.fetchone()["id"]
+        print(f"ID отправителя: {sender_id}")
 
-        # Сохранение сообщения в базе данных
-        cursor.execute("""
-            INSERT INTO messs (sender_id, receiver_id, message)
-            VALUES (%s, %s, %s)
-        """, (sender_id, receiver_id, message))
+        # Сохраняем сообщение в базу данных
+        cursor.execute("""INSERT INTO messs (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
         conn.commit()
+        print("Сообщение успешно добавлено в базу данных.")
 
         # Уведомление участников чата
         room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
@@ -348,11 +353,13 @@ def handle_send_message(data):
             "receiver_id": receiver_id,
             "message": message
         }, room=room)
+
     except Exception as e:
-        print(f"Ошибка отправки сообщения: {e}")
+        print(f"Ошибка при отправке сообщения: {e}")
     finally:
         cursor.close()
         conn.close()
+
 
 # WebSocket: добавление пользователя в комнату
 @socketio.on("join_chat")
