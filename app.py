@@ -161,20 +161,27 @@ def find_users_with_common_interests(user_id):
     try:
         conn = get_db_connection()
         if not conn:
+            print("Не удалось подключиться к базе данных.")
             return []
-        cursor = conn.cursor(dictionary=True)  # Используем словарь для удобства работы с результатами
+
+        cursor = conn.cursor(dictionary=True)
+
         # Получение интересов текущего пользователя
         cursor.execute("SELECT interests FROM users WHERE id = %s;", (user_id,))
         user_interests_row = cursor.fetchone()
         if not user_interests_row or not user_interests_row['interests']:
+            print(f"Интересы текущего пользователя (ID: {user_id}) не найдены.")
             return []
-        user_interests = set(user_interests_row['interests'].split(','))  # Разделяем интересы на элементы
+
+        user_interests = set(user_interests_row['interests'].split(','))
+        print(f"Интересы текущего пользователя: {user_interests}")
+
         # Поиск других пользователей с совпадающими интересами
         cursor.execute("SELECT id, username, interests FROM users WHERE id != %s;", (user_id,))
         all_users = cursor.fetchall()
         matches = []
+
         for other_user in all_users:
-            # Убедимся, что у других пользователей есть интересы
             if not other_user['interests']:
                 continue
             other_interests_set = set(other_user['interests'].split(','))
@@ -182,15 +189,19 @@ def find_users_with_common_interests(user_id):
             if common_interests:
                 matches.append({
                     'id': other_user['id'],
-                    'username': other_user['username'],  # Используем username
+                    'name': other_user['username'],  # Меняем ключ username на name
                     'common_interests': ', '.join(common_interests)
                 })
+
+        print(f"Найдено совпадений: {len(matches)}")
         cursor.close()
         conn.close()
         return matches
+
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return []
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -245,16 +256,26 @@ def find_matches():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        
+        # Поиск ID текущего пользователя
         cursor.execute("SELECT id FROM users WHERE username = %s;", (username,))
         user_row = cursor.fetchone()
         if not user_row:
+            print(f"Пользователь {username} не найден в базе данных.")
             return "Пользователь не найден в базе данных.", 404
+        
         user_id = user_row[0]
+        print(f"ID текущего пользователя: {user_id}")
+        
+        # Поиск пользователей с общими интересами
         matches = find_users_with_common_interests(user_id)
-        return render_template('find_matches.html', matches=matches, current_user_id=current_user_id)
+        print(f"Найдено совпадений: {len(matches)}")
+        
+        return render_template('find_matches.html', matches=matches, current_user_id=user_id)
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка поиска совпадений.", 500
+
 
 @app.route('/start_chat', methods=['POST'])
 def start_chat():
