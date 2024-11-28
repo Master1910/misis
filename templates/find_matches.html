@@ -5,16 +5,16 @@
     <h2 class="fade">Пользователи с похожими интересами</h2>
     {% if matches %}
         <ul class="matches-list fade">
-        {% for match in matches %}
+            {% for match in matches %}
             <li>
                 <strong>{{ match.name }}</strong>: Общие интересы - {{ match.common_interests }}
                 <button 
                     class="chat-btn" 
-                    onclick="startChat({{ current_user_id }}, {{ match.id }})">
+                    onclick="startChat({{ current_user_id or 0 }}, {{ match.id or 0 }})">
                     Начать чат
                 </button>
             </li>
-        {% endfor %}
+            {% endfor %}
         </ul>
     {% else %}
         <p>К сожалению, мы не нашли пользователей с общими интересами.</p>
@@ -23,17 +23,31 @@
 
 <script>
     function startChat(user_1_id, user_2_id) {
-        console.log("Старт чата для:", user_1_id, user_2_id); // Отладка
+        // Проверка корректности переданных данных
+        if (!user_1_id || !user_2_id) {
+            console.error("Ошибка: идентификаторы пользователей некорректны.");
+            alert("Не удалось начать чат. Проверьте данные пользователей.");
+            return;
+        }
+
+        console.log("Старт чата для пользователей:", user_1_id, user_2_id); // Отладка
+
         fetch("{{ url_for('start_chat') }}", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_1_id: user1_id, user_2_id: user2_id }),
+            body: JSON.stringify({ user_1_id: user_1_id, user_2_id: user_2_id }),
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Ошибка сервера: " + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.chat_id) {
                 console.log("Чат создан, ID:", data.chat_id); // Отладка
-                window.location.href = `/chat/${data.chat_id}`; // Перенаправление в чат
+                // Перенаправление в созданный чат
+                window.location.href = `/chat/${data.chat_id}`;
             } else {
                 console.error("Ошибка создания чата:", data);
                 alert("Не удалось создать чат. Попробуйте позже.");
@@ -41,7 +55,7 @@
         })
         .catch(error => {
             console.error("Ошибка отправки запроса:", error);
-            alert("Произошла ошибка. Проверьте подключение к серверу.");
+            alert("Произошла ошибка при соединении с сервером. Попробуйте позже.");
         });
     }
 </script>
