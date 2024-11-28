@@ -113,21 +113,3 @@ function toggleSidebar() {
         mainContent.classList.add("menu-open");
     }
 }
-
-// Улучшенная анимация для плавной прокрутки чата
-const chatHistoryContainer = document.querySelector(".chat-history");
-if (chatHistoryContainer) {
-    chatHistoryContainer.addEventListener("scroll", () => {
-        const scrollTop = chatHistoryContainer.scrollTop;
-        const scrollHeight = chatHistoryContainer.scrollHeight;
-        const clientHeight = chatHistoryContainer.clientHeight;
-
-        if (scrollTop + clientHeight >= scrollHeight - 5) {
-            chatHistoryContainer.style.scrollBehavior = "smooth";
-        } else {
-            chatHistoryContainer.style.scrollBehavior = "auto";
-        }
-    });
-} else {
-    console.warn("Контейнер истории чата не найден.");
-}
