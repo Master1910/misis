@@ -48,7 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
     socket.on("receive_message", (data) => {
         if (data && data.message) {
             const sender = data.sender || "Неизвестно";
-            addMessageToChat(sender, data.message, false, data.timestamp);
+            addMessageToChat(sender, data.message, false);
         } else {
             console.warn("Получено некорректное сообщение:", data);
         }
@@ -64,12 +64,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Добавление сообщения в чат
-    function addMessageToChat(sender, text, isUser, timestamp = null) {
+    function addMessageToChat(sender, text, isUser) {
         const message = document.createElement("div");
         message.className = isUser ? "message sent" : "message received";
         message.innerHTML = `
             <p><strong>${sender}:</strong> ${text}</p>
-            <span class="timestamp">${timestamp ? new Date(timestamp).toLocaleString() : new Date().toLocaleString()}</span>
         `;
         chatHistory.appendChild(message);
         scrollChatToBottom();
