@@ -273,6 +273,10 @@ def chat(user_id):
         ''', (current_user_id, user_id, user_id, current_user_id))
         messages = cursor.fetchall()
 
+        # Добавление пользователя в комнату чата
+        room = f"chat_{min(current_user_id, user_id)}_{max(current_user_id, user_id)}"
+        join_room(room)
+
         return render_template("chat.html", messages=messages, target_user=target_user["username"], current_user_id=current_user_id)
     except Exception as e:
         print(f"Ошибка: {e}")
@@ -280,6 +284,7 @@ def chat(user_id):
     finally:
         cursor.close()
         conn.close()
+
 
 
 @app.route('/logout')
@@ -324,7 +329,7 @@ def handle_send_message(data):
         """, (sender_id, receiver_id, message))
         conn.commit()
 
-        # Уведомление участников чата
+        # Уведомление участников чата (отправка сообщения в соответствующую комнату)
         room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
         emit("receive_message", {
             "sender_id": sender_id,
@@ -336,6 +341,7 @@ def handle_send_message(data):
     finally:
         cursor.close()
         conn.close()
+
 
 
 # WebSocket: добавление пользователя в комнату
