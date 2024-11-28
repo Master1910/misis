@@ -20,7 +20,8 @@ app.config['SESSION_REDIS'] = redis.StrictRedis.from_url(redis_url)
 # Инициализация сессий
 Session(app)
 # Инициализация WebSocket
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=25, ping_interval=10)
+
 # --- Конфигурация MySQL ---
 DATABASE_URL = "mysql://root:lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym@junction.proxy.rlwy.net:42004/railway"
 # --- Утилитарные функции ---
