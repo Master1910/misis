@@ -13,85 +13,121 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatForm = document.querySelector("#chat-form");
     const chatInput = document.querySelector("#message-input");
 
-    if (!chatHistory || !chatForm || !chatInput) {
-        console.error("Не все элементы чата найдены на странице. Проверьте HTML.");
-        return;
+    if (chatHistory && chatForm && chatInput) {
+        // Получаем идентификатор текущего чата из контекста страницы
+        const chatId = "{{ chat_id }}"; // Передаётся из Flask
+
+        // Подключение к WebSocket
+        const socket = io.connect();
+
+        // Обработка отправки сообщения
+        chatForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const messageText = chatInput.value.trim();
+
+            if (messageText) {
+                // Отправка сообщения через WebSocket
+                socket.emit("send_message", {
+                    chat_id: chatId, // Идентификатор чата
+                    message: messageText
+                });
+
+                // Локальное добавление отправленного сообщения
+                addMessageToChat("Вы", messageText, true);
+                chatInput.value = "";
+            } else {
+                console.warn("Пустое сообщение нельзя отправить.");
+            }
+        });
+
+        // Обработка входящих сообщений
+        socket.on("receive_message", (data) => {
+            if (data && data.message && data.sender) {
+                addMessageToChat(data.sender, data.message, false);
+            } else {
+                console.warn("Получено некорректное сообщение:", data);
+            }
+        });
+
+        // Обработка ошибок подключения WebSocket
+        socket.on("connect_error", (error) => {
+            console.error("Ошибка подключения к WebSocket:", error);
+        });
+
+        socket.on("error", (error) => {
+            console.error("Ошибка WebSocket:", error);
+        });
+
+        // Добавление сообщения в чат
+        function addMessageToChat(sender, text, isUser) {
+            const message = document.createElement("div");
+            message.className = isUser ? "message sent" : "message received";
+            message.innerHTML = `<p><strong>${sender}:</strong> ${text}</p>`;
+            chatHistory.appendChild(message);
+            scrollChatToBottom();
+        }
+
+        // Прокрутка вниз истории чата
+        function scrollChatToBottom() {
+            if (chatHistory) {
+                chatHistory.scrollTo({
+                    top: chatHistory.scrollHeight,
+                    behavior: "smooth"
+                });
+            }
+        }
+
+        // Уведомляем сервер о присоединении к чату
+        socket.emit("join_chat", {
+            chat_id: chatId // Идентификатор чата
+        });
+
+        // Обработка системных сообщений
+        socket.on("message", (data) => {
+            if (data && data.msg) {
+                addMessageToChat("Система", data.msg, false);
+            }
+        });
+    } else {
+        console.warn("Элементы чата не найдены. Пропускаем функциональность чата.");
     }
 
-    // Получаем идентификатор текущего чата из контекста страницы
-    const chatId = "{{ chat_id }}"; // Передаётся из Flask
+    // Обработка кнопок "Начать чат"
+    const startChatButtons = document.querySelectorAll(".start-chat-btn");
+    startChatButtons.forEach((button) => {
+        button.addEventListener("click", (event) => {
+            event.preventDefault();
 
-    // Подключение к WebSocket
-    const socket = io.connect();
+            // Получение данных из атрибута кнопки
+            const targetUserId = button.dataset.userId; // Предполагается, что кнопка имеет атрибут data-user-id
 
-    // Обработка отправки сообщения
-    chatForm.addEventListener("submit", (event) => {
-        event.preventDefault();
-        const messageText = chatInput.value.trim();
+            if (!targetUserId) {
+                console.error("Целевой пользователь не указан в data-user-id.");
+                return;
+            }
 
-        if (messageText) {
-            // Отправка сообщения через WebSocket
-            socket.emit("send_message", {
-                chat_id: chatId, // Идентификатор чата
-                message: messageText
-            });
+            // Отправка POST-запроса для создания нового чата
 
-            // Локальное добавление отправленного сообщения
-            addMessageToChat("Вы", messageText, true);
-            chatInput.value = "";
-        } else {
-            console.warn("Пустое сообщение нельзя отправить.");
-        }
+        });
     });
 
-    // Обработка входящих сообщений
-    socket.on("receive_message", (data) => {
-        if (data && data.message && data.sender) {
-            addMessageToChat(data.sender, data.message, false);
-        } else {
-            console.warn("Получено некорректное сообщение:", data);
-        }
-    });
+    // Улучшенная анимация для плавной прокрутки чата
+    const chatHistoryContainer = document.querySelector(".chat-history");
+    if (chatHistoryContainer) {
+        chatHistoryContainer.addEventListener("scroll", () => {
+            const scrollTop = chatHistoryContainer.scrollTop;
+            const scrollHeight = chatHistoryContainer.scrollHeight;
+            const clientHeight = chatHistoryContainer.clientHeight;
 
-    // Обработка ошибок подключения WebSocket
-    socket.on("connect_error", (error) => {
-        console.error("Ошибка подключения к WebSocket:", error);
-    });
-
-    socket.on("error", (error) => {
-        console.error("Ошибка WebSocket:", error);
-    });
-
-    // Добавление сообщения в чат
-    function addMessageToChat(sender, text, isUser) {
-        const message = document.createElement("div");
-        message.className = isUser ? "message sent" : "message received";
-        message.innerHTML = `<p><strong>${sender}:</strong> ${text}</p>`;
-        chatHistory.appendChild(message);
-        scrollChatToBottom();
+            if (scrollTop + clientHeight >= scrollHeight - 5) {
+                chatHistoryContainer.style.scrollBehavior = "smooth";
+            } else {
+                chatHistoryContainer.style.scrollBehavior = "auto";
+            }
+        });
+    } else {
+        console.warn("Контейнер истории чата не найден.");
     }
-
-    // Прокрутка вниз истории чата
-    function scrollChatToBottom() {
-        if (chatHistory) {
-            chatHistory.scrollTo({
-                top: chatHistory.scrollHeight,
-                behavior: "smooth"
-            });
-        }
-    }
-
-    // Уведомляем сервер о присоединении к чату
-    socket.emit("join_chat", {
-        chat_id: chatId // Идентификатор чата
-    });
-
-    // Обработка системных сообщений
-    socket.on("message", (data) => {
-        if (data && data.msg) {
-            addMessageToChat("Система", data.msg, false);
-        }
-    });
 });
 
 // Функция открытия/закрытия бокового меню
