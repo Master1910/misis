@@ -79,6 +79,7 @@ def init_db():
                 user_1_id INT NOT NULL,
                 user_2_id INT NOT NULL,
                 active BOOLEAN DEFAULT 0,
+                data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Добавлено поле data
                 FOREIGN KEY (user_1_id) REFERENCES users(id),
                 FOREIGN KEY (user_2_id) REFERENCES users(id)
             );
@@ -90,6 +91,7 @@ def init_db():
         print("База данных успешно инициализирована.")
     except mysql.connector.Error as e:
         print(f"Ошибка при инициализации базы данных: {e}")
+
 
 
 
