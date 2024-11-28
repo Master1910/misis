@@ -6,9 +6,7 @@ import mysql.connector
 import os
 import redis
 from datetime import datetime
-import eventlet
 
-eventlet.monkey_patch()
 # --- Конфигурация приложения ---
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
@@ -23,7 +21,7 @@ app.config['SESSION_REDIS'] = redis.StrictRedis.from_url(redis_url)
 # Инициализация сессий
 Session(app)
 # Инициализация WebSocket
-socketio = SocketIO(app, async_mode='eventlet')
+socketio = SocketIO(app,)
 # --- Конфигурация MySQL ---
 DATABASE_URL = "mysql://root:lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym@junction.proxy.rlwy.net:42004/railway"
 # --- Утилитарные функции ---
