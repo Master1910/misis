@@ -320,23 +320,22 @@ def internal_server_error(e):
 # WebSocket: отправка сообщений
 @socketio.on("send_message")
 def handle_send_message(data):
-    """Обработка отправки сообщений."""
+    print("Обработка отправки сообщений началась.")
     sender = session.get("username")
     receiver_id = data.get("receiver_id")
     message = data.get("message")
 
-    # Отладочные сообщения
-    print(f"Получены данные для отправки сообщения: sender: {sender}, receiver_id: {receiver_id}, message: {message}")
+    print(f"Получены данные: sender: {sender}, receiver_id: {receiver_id}, message: {message}")
 
     if not sender or not receiver_id or not message:
         print("Ошибка: Неверные данные для отправки сообщения.")
         return
 
-    # Подключение к базе данных
     conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor(dictionary=True)
+            print("Подключение к базе данных успешно.")
 
             # Получаем ID отправителя
             cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
@@ -348,25 +347,17 @@ def handle_send_message(data):
                 print(f"Не найден отправитель с именем {sender}")
                 return
 
-            # Проверяем, что получатель существует в базе
+            # Проверяем существование получателя
             cursor.execute("SELECT id FROM users WHERE id = %s", (receiver_id,))
             receiver_row = cursor.fetchone()
             if not receiver_row:
                 print(f"Не найден получатель с ID {receiver_id}")
                 return
 
-            # Определяем, в какую таблицу записывать
-            if sender_id < receiver_id:
-                # Записываем в таблицу chat_1
-                cursor.execute("""INSERT INTO chat_1 (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
-            else:
-                # Записываем в таблицу chat_2
-                cursor.execute("""INSERT INTO chat_2 (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
-
-            # Сохраняем сообщение в основную таблицу messs
+            # Сохраняем сообщение в базу данных
             cursor.execute("""INSERT INTO messs (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
             conn.commit()
-            print("Сообщение успешно добавлено в базы данных.")
+            print("Сообщение успешно сохранено в базу данных.")
 
             # Уведомление участников чата
             room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
@@ -377,10 +368,12 @@ def handle_send_message(data):
             }, room=room)
 
         except Exception as e:
-            print(f"Ошибка при отправке сообщения: {e}")
+            print(f"Ошибка при сохранении сообщения в базу данных: {e}")
         finally:
             cursor.close()
             conn.close()
+    else:
+        print("Ошибка: Не удалось подключиться к базе данных.")
 
 
 
