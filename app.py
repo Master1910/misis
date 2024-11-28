@@ -332,33 +332,35 @@ def handle_send_message(data):
         print("Ошибка: Неверные данные для отправки сообщения.")
         return
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+    # Подключение к базе данных
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
 
-        # Получаем ID отправителя
-        cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
-        sender_id = cursor.fetchone()["id"]
-        print(f"ID отправителя: {sender_id}")
+            # Получаем ID отправителя
+            cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
+            sender_id = cursor.fetchone()["id"]
+            print(f"ID отправителя: {sender_id}")
 
-        # Сохраняем сообщение в базу данных
-        cursor.execute("""INSERT INTO messs (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
-        conn.commit()
-        print("Сообщение успешно добавлено в базу данных.")
+            # Сохраняем сообщение в базу данных
+            cursor.execute("""INSERT INTO messs (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
+            conn.commit()
+            print("Сообщение успешно добавлено в базу данных.")
 
-        # Уведомление участников чата
-        room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
-        emit("receive_message", {
-            "sender_id": sender_id,
-            "receiver_id": receiver_id,
-            "message": message
-        }, room=room)
+            # Уведомление участников чата
+            room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
+            emit("receive_message", {
+                "sender_id": sender_id,
+                "receiver_id": receiver_id,
+                "message": message
+            }, room=room)
 
-    except Exception as e:
-        print(f"Ошибка при отправке сообщения: {e}")
-    finally:
-        cursor.close()
-        conn.close()
+        except Exception as e:
+            print(f"Ошибка при отправке сообщения: {e}")
+        finally:
+            cursor.close()
+            conn.close()
 
 
 # WebSocket: добавление пользователя в комнату
