@@ -394,6 +394,36 @@ def join_chat(data):
         conn.close()
 
 
+@app.route('/get_chat_history', methods=['POST'])
+def get_chat_history():
+    data = request.json
+    sender_id = data.get('sender_id')
+    receiver_id = data.get('receiver_id')
+    
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Запрос к таблице messs
+            query = """
+            SELECT sender_id, message
+            FROM messs
+            WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s)
+            ORDER BY id ASC
+            """
+            cursor.execute(query, (sender_id, receiver_id, receiver_id, sender_id))
+            messages = cursor.fetchall()
+            return jsonify(messages), 200
+        except Exception as e:
+            print(f"Ошибка при загрузке истории сообщений: {e}")
+            return jsonify({"error": "Ошибка при загрузке сообщений"}), 500
+        finally:
+            conn.close()
+    return jsonify({"error": "Ошибка подключения к базе данных"}), 500
+
+
+
+
 
 @socketio.on("leave_chat")
 def leave_chat(data):
