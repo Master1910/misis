@@ -259,8 +259,8 @@ def find_matches():
 @app.route('/start_chat', methods=['POST'])
 def start_chat():
     data = request.json
-    user1_id = data.get('user_1_id')  # Получение user1_id из данных запроса
-    user2_id = data.get('user_2_id')  # Получение user2_id из данных запроса
+    user_1_id = data.get('user_1_id')  # Получение user1_id из данных запроса
+    user_2_id = data.get('user_2_id')  # Получение user2_id из данных запроса
     
     # Исправьте имя таблицы или столбца, если проблема в этом.
     cursor = mysql.connection.cursor()
@@ -270,7 +270,7 @@ def start_chat():
         SELECT id FROM chatss
         WHERE (user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s)
     """
-    cursor.execute(query, (user1_id, user2_id, user2_id, user1_id))
+    cursor.execute(query, (user_1_id, user_2_id, user_2_id, user_1_id))
     existing_chat = cursor.fetchone()
     
     if existing_chat:
@@ -280,7 +280,7 @@ def start_chat():
         insert_query = """
             INSERT INTO chatss (user_1_id, user_2_id, active) VALUES (%s, %s, 0)
         """
-        cursor.execute(insert_query, (user1_id, user2_id))
+        cursor.execute(insert_query, (user_1_id, user_2_id))
         mysql.connection.commit()
         chat_id = cursor.lastrowid
 
@@ -356,7 +356,7 @@ def chat(user_id):
         target_user_username = target_user["username"]
 
         # Проверяем, что между пользователями есть активный чат
-        cursor.execute("SELECT * FROM chatss WHERE (user_1_id = %s AND user2_id = %s) OR (user_1_id = %s AND user_2_id = %s)", (current_user_id, user_id, user_id, current_user_id))
+        cursor.execute("SELECT * FROM chatss WHERE (user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s)", (current_user_id, user_id, user_id, current_user_id))
         chat = cursor.fetchone()
 
         if not chat:
