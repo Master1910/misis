@@ -256,6 +256,38 @@ def find_matches():
         print(f"Ошибка базы данных: {e}")
         return "Ошибка поиска совпадений.", 500
 
+@app.route('/start_chat', methods=['POST'])
+def start_chat():
+    data = request.json
+    user1_id = data.get('user_1_id')  # Получение user1_id из данных запроса
+    user2_id = data.get('user_2_id')  # Получение user2_id из данных запроса
+    
+    # Исправьте имя таблицы или столбца, если проблема в этом.
+    cursor = mysql.connection.cursor()
+    
+    # Убедитесь, что в таблице есть столбцы user1_id и user2_id
+    query = """
+        SELECT id FROM chatss
+        WHERE (user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s)
+    """
+    cursor.execute(query, (user1_id, user2_id, user2_id, user1_id))
+    existing_chat = cursor.fetchone()
+    
+    if existing_chat:
+        chat_id = existing_chat[0]
+    else:
+        # Добавьте строку в таблицу "chats", если столбцы user1_id и user2_id действительно есть
+        insert_query = """
+            INSERT INTO chatss (user_1_id, user_2_id, active) VALUES (%s, %s, 0)
+        """
+        cursor.execute(insert_query, (user1_id, user2_id))
+        mysql.connection.commit()
+        chat_id = cursor.lastrowid
+
+    cursor.close()
+    return jsonify({'chat_id': chat_id})
+
+
 
 @app.route('/create_chat/<int:target_user_id>', methods=['POST'])
 def create_chat(target_user_id):
@@ -284,7 +316,7 @@ def create_chat(target_user_id):
         target_user_username = target_user["username"]
 
         # Создание чата (сохранение в базе данных)
-        cursor.execute("INSERT INTO chatss (user1_id, user2_id) VALUES (%s, %s)", (current_user_id, target_user_id))
+        cursor.execute("INSERT INTO chatss (user_1_id, user_2_id) VALUES (%s, %s)", (current_user_id, target_user_id))
         conn.commit()
 
         return redirect(url_for('chat', user_id=target_user_id))
@@ -324,7 +356,7 @@ def chat(user_id):
         target_user_username = target_user["username"]
 
         # Проверяем, что между пользователями есть активный чат
-        cursor.execute("SELECT * FROM chatss WHERE (user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s)", (current_user_id, user_id, user_id, current_user_id))
+        cursor.execute("SELECT * FROM chatss WHERE (user_1_id = %s AND user2_id = %s) OR (user_1_id = %s AND user_2_id = %s)", (current_user_id, user_id, user_id, current_user_id))
         chat = cursor.fetchone()
 
         if not chat:
@@ -392,18 +424,33 @@ def handle_send_message(data):
                 print(f"Не найден получатель с ID {receiver_id}")
                 return
 
-            # Определяем, в какую таблицу записывать
-            if sender_id < receiver_id:
-                # Записываем в таблицу chat_1
-                cursor.execute("""INSERT INTO chat_1 (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
-            else:
-                # Записываем в таблицу chat_2
-                cursor.execute("""INSERT INTO chat_2 (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
+            # Находим или создаем чат
+            cursor.execute("""
+                SELECT id FROM chats 
+                WHERE (user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s)
+            """, (sender_id, receiver_id, receiver_id, sender_id))
+            existing_chat = cursor.fetchone()
 
-            # Сохраняем сообщение в основную таблицу messs
-            cursor.execute("""INSERT INTO messs (sender_id, receiver_id, message) VALUES (%s, %s, %s)""", (sender_id, receiver_id, message))
+            if not existing_chat:
+                # Если чата нет, создаем новый
+                cursor.execute("""
+                    INSERT INTO chats (user_1_id, user_2_id, active) 
+                    VALUES (%s, %s, 0)
+                """, (sender_id, receiver_id))
+                conn.commit()
+                chat_id = cursor.lastrowid
+                print(f"Создан новый чат с ID {chat_id}")
+            else:
+                chat_id = existing_chat["id"]
+                print(f"Чат найден с ID {chat_id}")
+
+            # Записываем сообщение в таблицу messs
+            cursor.execute("""
+                INSERT INTO messs (sender_id, receiver_id, message) 
+                VALUES (%s, %s, %s)
+            """, (sender_id, receiver_id, message))
             conn.commit()
-            print("Сообщение успешно добавлено в базы данных.")
+            print("Сообщение успешно добавлено в таблицу messs.")
 
             # Уведомление участников чата
             room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
@@ -418,6 +465,7 @@ def handle_send_message(data):
         finally:
             cursor.close()
             conn.close()
+
 
 
 
