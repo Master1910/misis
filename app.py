@@ -74,7 +74,7 @@ def init_db():
         
         # Создание таблицы чатов
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS chats (
+            CREATE TABLE IF NOT EXISTS chatss (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_1_id INT NOT NULL,
                 user_2_id INT NOT NULL,
