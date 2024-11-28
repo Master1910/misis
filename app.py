@@ -360,8 +360,8 @@ def create_chat(target_user_id):
         return f"Ошибка при создании чата: {e}", 500
 
 # Маршрут страницы чата
-@app.route('/chat/<int:user_id>', methods=['GET', 'POST'])
-def chat(user_id):
+@app.route('/chat/<int:chat_id>', methods=['GET', 'POST'])
+def chat(chat_id):
     """Чат между текущим пользователем и другим пользователем."""
     current_user = session.get("username")
     if not current_user:
@@ -380,8 +380,16 @@ def chat(user_id):
 
         current_user_id = current_user_row["id"]
 
-        # Получение информации о собеседнике
-        cursor.execute("SELECT username FROM users WHERE id = %s", (user_id,))
+        # Проверка существования чата
+        cursor.execute("SELECT * FROM chatss WHERE id = %s AND (user_1_id = %s OR user_2_id = %s)", (chat_id, current_user_id, current_user_id))
+        chat = cursor.fetchone()
+
+        if not chat:
+            return "Чат не найден или вы не являетесь участником этого чата.", 404
+
+        # Получаем информацию о собеседнике
+        target_user_id = chat["user_1_id"] if chat["user_1_id"] != current_user_id else chat["user_2_id"]
+        cursor.execute("SELECT username FROM users WHERE id = %s", (target_user_id,))
         target_user = cursor.fetchone()
         
         if not target_user:
@@ -389,18 +397,17 @@ def chat(user_id):
 
         target_user_username = target_user["username"]
 
-        # Проверяем, что между пользователями есть активный чат
-        cursor.execute("SELECT * FROM chatss WHERE (user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s)", (current_user_id, user_id, user_id, current_user_id))
-        chat = cursor.fetchone()
+        # Получаем сообщения чата (если необходимо)
+        cursor.execute("SELECT * FROM messs WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s) ORDER BY id", 
+                       (current_user_id, target_user_id, target_user_id, current_user_id))
+        messages = cursor.fetchall()
 
-        if not chat:
-            return "Чат не найден, создайте его.", 404
-
-        return render_template("chat.html", target_user=target_user_username)
+        return render_template("chat.html", target_user=target_user_username, messages=messages)
 
     except Exception as e:
         print(f"Ошибка при обработке чата: {e}")
         return f"Ошибка: {e}", 500
+
 
 
 
