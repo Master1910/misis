@@ -391,13 +391,13 @@ def internal_server_error(e):
 def handle_send_message(data):
     """Обработка отправки сообщений."""
     sender = session.get("username")
-    receiver_id = data.get("receiver_id")
+    receiver = data.get("receiver")  # Используем имя получателя, как и на клиентской стороне
     message = data.get("message")
 
     # Отладочные сообщения
-    print(f"Получены данные для отправки сообщения: sender: {sender}, receiver_id: {receiver_id}, message: {message}")
+    print(f"Получены данные для отправки сообщения: sender: {sender}, receiver: {receiver}, message: {message}")
 
-    if not sender or not receiver_id or not message:
+    if not sender or not receiver or not message:
         print("Ошибка: Неверные данные для отправки сообщения.")
         return
 
@@ -417,15 +417,17 @@ def handle_send_message(data):
                 print(f"Не найден отправитель с именем {sender}")
                 return
 
-            # Проверяем, что получатель существует в базе
-            cursor.execute("SELECT id FROM users WHERE id = %s", (receiver_id,))
+            # Получаем ID получателя
+            cursor.execute("SELECT id FROM users WHERE username = %s", (receiver,))
             receiver_row = cursor.fetchone()
             if not receiver_row:
-                print(f"Не найден получатель с ID {receiver_id}")
+                print(f"Не найден получатель с именем {receiver}")
                 return
+            receiver_id = receiver_row["id"]
+            print(f"ID получателя: {receiver_id}")
 
             # Находим или создаем чат
-            cursor.execute("""
+            cursor.execute(""" 
                 SELECT id FROM chats 
                 WHERE (user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s)
             """, (sender_id, receiver_id, receiver_id, sender_id))
@@ -433,7 +435,7 @@ def handle_send_message(data):
 
             if not existing_chat:
                 # Если чата нет, создаем новый
-                cursor.execute("""
+                cursor.execute(""" 
                     INSERT INTO chats (user_1_id, user_2_id, active) 
                     VALUES (%s, %s, 0)
                 """, (sender_id, receiver_id))
@@ -445,7 +447,7 @@ def handle_send_message(data):
                 print(f"Чат найден с ID {chat_id}")
 
             # Записываем сообщение в таблицу messs
-            cursor.execute("""
+            cursor.execute(""" 
                 INSERT INTO messs (sender_id, receiver_id, message) 
                 VALUES (%s, %s, %s)
             """, (sender_id, receiver_id, message))
@@ -455,6 +457,7 @@ def handle_send_message(data):
             # Уведомление участников чата
             room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
             emit("receive_message", {
+                "sender": sender,
                 "sender_id": sender_id,
                 "receiver_id": receiver_id,
                 "message": message
@@ -465,6 +468,7 @@ def handle_send_message(data):
         finally:
             cursor.close()
             conn.close()
+
 
 
 
