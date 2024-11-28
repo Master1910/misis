@@ -115,15 +115,18 @@ document.addEventListener("DOMContentLoaded", () => {
 function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
     const mainContent = document.getElementById("main-content");
+    
     if (!sidebar || !mainContent) {
-        console.error("Не найден элемент бокового меню.");
+        console.error("Не найден элемент бокового меню или основного контента.");
         return;
     }
-    if (sidebar.style.width === "250px") {
-        sidebar.style.width = "0";
+
+    // Проверяем текущее состояние ширины боковой панели
+    if (sidebar.classList.contains("open")) {
+        sidebar.classList.remove("open");
         mainContent.classList.remove("menu-open");
     } else {
-        sidebar.style.width = "250px";
+        sidebar.classList.add("open");
         mainContent.classList.add("menu-open");
     }
 }
