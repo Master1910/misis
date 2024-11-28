@@ -302,11 +302,11 @@ def start_chat():
         if existing_chat:
             chat_id = existing_chat['id']
         else:
-            # Создание нового чата
+            # Создание нового чата с указанием значения для 'data'
             insert_query = """
-                INSERT INTO chatss (user_1_id, user_2_id, active) VALUES (%s, %s, 0)
+                INSERT INTO chatss (user_1_id, user_2_id, active, data) VALUES (%s, %s, 0, %s)
             """
-            cursor.execute(insert_query, (user_1_id, user_2_id))
+            cursor.execute(insert_query, (user_1_id, user_2_id, 'default_chat_data'))  # Значение для data
             conn.commit()
             chat_id = cursor.lastrowid
 
@@ -317,8 +317,6 @@ def start_chat():
     finally:
         cursor.close()
         conn.close()
-
-
 
 @app.route('/create_chat/<int:target_user_id>', methods=['POST'])
 def create_chat(target_user_id):
