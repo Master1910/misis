@@ -4,13 +4,23 @@
 <div class="container">
     <h2>Чат с {{ target_user }}</h2>
     <div class="chat-container">
+        <!-- История сообщений -->
         <div class="chat-history" id="chat-history">
             {% for message in messages %}
                 <div class="message {% if message.sender_id == current_user_id %}sent{% else %}received{% endif %}">
-                    <p>{{ message.message }}</p>
+                    <p>
+                        <strong>
+                            {% if message.sender_id == current_user_id %}
+                                Вы
+                            {% else %}
+                                {{ message.sender }}
+                            {% endif %}
+                        </strong>: {{ message.message }}
+                    </p>
                 </div>
             {% endfor %}
         </div>
+        <!-- Форма отправки сообщения -->
         <form id="chat-form" action="javascript:void(0);">
             <input 
                 type="text" 
@@ -26,7 +36,7 @@
 <!-- Подключение Socket.IO через CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.3/socket.io.min.js"></script>
 
-<!-- Ваш кастомный JavaScript -->
+<!-- Кастомный JavaScript -->
 <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 
 <script>
