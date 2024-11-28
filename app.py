@@ -5,7 +5,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import mysql.connector
 import os
 import redis
-from datetime import datetime
 
 # --- Конфигурация приложения ---
 app = Flask(__name__)
@@ -46,7 +45,10 @@ def init_db():
         if not conn:
             print("Не удалось подключиться к базе данных.")
             return
+        
         cursor = conn.cursor()
+        
+        # Создание таблицы пользователей
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -56,23 +58,26 @@ def init_db():
                 interests TEXT
             );
         ''')
+        
+        # Создание таблицы сообщений
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS mess (
+            CREATE TABLE IF NOT EXISTS messs (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 sender_id INT NOT NULL,
                 receiver_id INT NOT NULL,
                 message TEXT NOT NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (sender_id) REFERENCES users(id),
                 FOREIGN KEY (receiver_id) REFERENCES users(id)
             );
         ''')
+        
         conn.commit()
         cursor.close()
         conn.close()
         print("База данных успешно инициализирована.")
     except mysql.connector.Error as e:
         print(f"Ошибка при инициализации базы данных: {e}")
+
 
 @app.route('/init_db')
 def init_database():
@@ -237,46 +242,44 @@ def find_matches():
         print(f"Ошибка базы данных: {e}")
         return "Ошибка поиска совпадений.", 500
 
-#для создания чата
+# Маршрут страницы чата
 @app.route('/chat/<int:user_id>', methods=['GET', 'POST'])
 def chat(user_id):
-    """Страница чата между пользователями."""
+    """Чат между текущим пользователем и другим пользователем."""
     current_user = session.get("username")
     if not current_user:
-        return redirect(url_for('login'))
+        return redirect(url_for("login"))
 
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id FROM users WHERE username = %s;", (current_user,))
-        current_user_id = cursor.fetchone()['id']
 
-        cursor.execute("SELECT username FROM users WHERE id = %s;", (user_id,))
+        # Получение ID текущего пользователя
+        cursor.execute("SELECT id FROM users WHERE username = %s", (current_user,))
+        current_user_id = cursor.fetchone()["id"]
+
+        # Получение информации о собеседнике
+        cursor.execute("SELECT username FROM users WHERE id = %s", (user_id,))
         target_user = cursor.fetchone()
         if not target_user:
             return "Пользователь не найден.", 404
 
+        # Получение сообщений между пользователями
         cursor.execute('''
-            SELECT sender_id, message, timestamp
-            FROM mess
+            SELECT sender_id, message
+            FROM messs
             WHERE (sender_id = %s AND receiver_id = %s)
                OR (sender_id = %s AND receiver_id = %s)
-            ORDER BY timestamp
         ''', (current_user_id, user_id, user_id, current_user_id))
         messages = cursor.fetchall()
 
+        return render_template("chat.html", messages=messages, target_user=target_user["username"], current_user_id=current_user_id)
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        return f"Ошибка: {e}", 500
+    finally:
         cursor.close()
         conn.close()
-
-        # Форматируем временные метки сообщений перед передачей на шаблон
-        for message in messages:
-            message['timestamp'] = message['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
-
-        return render_template('chat.html', messages=messages, target_user=target_user['username'])
-    except Exception as e:
-        print(f"Ошибка при загрузке чата: {e}")
-        return f"Ошибка: {e}", 500
-
 
 
 @app.route('/logout')
@@ -295,10 +298,10 @@ def internal_server_error(e):
     """Обработка ошибки сервера."""
     return render_template("500.html"), 500
 
-# --- WebSocket ---
-@socketio.on('send_message')
+# WebSocket: отправка сообщений
+@socketio.on("send_message")
 def handle_send_message(data):
-    """Отправка сообщений через WebSocket."""
+    """Обработка отправки сообщений."""
     sender = session.get("username")
     receiver_id = data.get("receiver_id")
     message = data.get("message")
@@ -309,95 +312,70 @@ def handle_send_message(data):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id FROM users WHERE username = %s;", (sender,))
-        sender_id = cursor.fetchone()['id']
 
+        # Получение ID отправителя
+        cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
+        sender_id = cursor.fetchone()["id"]
+
+        # Сохранение сообщения в базе данных
         cursor.execute("""
-            INSERT INTO mess (sender_id, receiver_id, message, timestamp)
-            VALUES (%s, %s, %s, NOW());
+            INSERT INTO messs (sender_id, receiver_id, message)
+            VALUES (%s, %s, %s)
         """, (sender_id, receiver_id, message))
         conn.commit()
 
-        # Формируем временную метку с использованием datetime
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        emit('receive_message', {
-            'sender_id': sender_id,
-            'receiver_id': receiver_id,
-            'message': message,
-            'timestamp': timestamp  # Передаем уже отформатированную метку времени
-        }, broadcast=True)
+        # Уведомление участников чата
+        room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
+        emit("receive_message", {
+            "sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "message": message
+        }, room=room)
     except Exception as e:
-        print(f"Ошибка при отправке сообщения: {e}")
+        print(f"Ошибка отправки сообщения: {e}")
     finally:
         cursor.close()
         conn.close()
 
-@socketio.on('join')
-def on_join(data):
-    """Добавление пользователя в чат по интересам."""
-    username = session.get('username')
-    if username:
-        room = f"{username}_chat"
-        join_room(room)
-        emit('message', {'msg': f"{username} присоединился к чату."}, room=room)
 
-@socketio.on('mess')
-def handle_message(data):
-    """Обработка входящих сообщений в чатах."""
-    username = session.get('username')
-    if username:
-        message = data.get('msg')
-        room = f"{username}_chat"
-        emit('message', {'msg': f"{username}: {message}"}, room=room)
-
-@socketio.on('connect')
-def on_connect():
-    username = session.get("username")
-    if username:
-        print(f"User {username} connected")
-        room = f"chat_{username}"
-        join_room(room)
-    else:
-        print("No username in session, failed to join room.")
-
-@socketio.on('join_chat')
+# WebSocket: добавление пользователя в комнату
+@socketio.on("join_chat")
 def join_chat(data):
-    """Добавление пользователя в комнату чата."""
-    username = session.get('username')
-    target_user_id = data.get('user_id')  # ID другого пользователя
+    """Подключение пользователя к комнате чата."""
+    username = session.get("username")
+    target_user_id = data.get("user_id")
+
     if not username or not target_user_id:
         return
-    
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        
-        # Получаем ID текущего пользователя
+
+        # Получение ID текущего пользователя
         cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
-        user_row = cursor.fetchone()
-        if not user_row:
-            raise ValueError("Текущий пользователь не найден")
-        current_user_id = user_row['id']
-        
-        # Формируем комнату для обоих пользователей
+        current_user_id = cursor.fetchone()["id"]
+
+        # Формирование имени комнаты
         room = f"chat_{min(current_user_id, target_user_id)}_{max(current_user_id, target_user_id)}"
         join_room(room)
-        
-        # Уведомляем других участников
-        emit('message', {'msg': f"{username} присоединился к чату."}, room=room)
+
+        # Уведомление участников
+        emit("message", {"msg": f"{username} присоединился к чату."}, room=room)
     except Exception as e:
-        print(f"Ошибка при добавлении в комнату: {e}")
+        print(f"Ошибка добавления в комнату: {e}")
     finally:
         cursor.close()
         conn.close()
 
-@socketio.on('leave_chat')
+@socketio.on("leave_chat")
 def leave_chat(data):
-    """Когда пользователь покидает чат."""
-    chat_id = data['chat_id']
-    leave_room(f'chat_{chat_id}')
-    print(f"User {session.get('username')} left chat {chat_id}")
+    """Отключение пользователя от комнаты чата."""
+    room = data.get("room")
+    username = session.get("username")
+    if username and room:
+        leave_room(room)
+        emit("message", {"msg": f"{username} покинул чат."}, room=room)
 
 
 
