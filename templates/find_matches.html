@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="matches-container">
     <h2 class="fade">Пользователи с похожими интересами</h2>
@@ -7,7 +8,11 @@
         {% for match in matches %}
             <li>
                 <strong>{{ match.name }}</strong>: Общие интересы - {{ match.common_interests }}
-                <a href="{{ url_for('chat', user_id=match.id) }}" class="chat-btn">Чат</a>
+                <button 
+                    class="chat-btn" 
+                    onclick="startChat({{ current_user_id }}, {{ match.id }})">
+                    Начать чат
+                </button>
             </li>
         {% endfor %}
         </ul>
@@ -15,4 +20,23 @@
         <p>К сожалению, мы не нашли пользователей с общими интересами.</p>
     {% endif %}
 </div>
+
+<script>
+    function startChat(user1_id, user2_id) {
+        fetch("{{ url_for('start_chat') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_1_id: user1_id, user_2_id: user2_id }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.chat_id) {
+                window.location.href = `/chat/${data.chat_id}`; // Перенаправление в чат
+            } else {
+                console.error("Ошибка создания чата.");
+            }
+        })
+        .catch(error => console.error("Ошибка отправки запроса:", error));
+    }
+</script>
 {% endblock %}
