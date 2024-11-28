@@ -377,6 +377,16 @@ def leave_chat(data):
         leave_room(room)
         emit("message", {"msg": f"{username} покинул чат."}, room=room)
 
+@app.route('/chat/<target_user>')
+def chat(target_user):
+    current_user_id = session.get("user_id")
+    messages = get_chat_messages(current_user_id, target_user)  # Функция, чтобы загрузить историю сообщений
+    return render_template(
+        "chat.html", 
+        target_user=target_user, 
+        current_user_id=current_user_id, 
+        messages=messages
+    )
 
 
 # --- Запуск ---
