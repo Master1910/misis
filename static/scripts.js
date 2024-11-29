@@ -17,74 +17,77 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatInput = document.querySelector("#message-input");
     const chatId = chatHistory?.dataset.chatId || "";
 
-    if (chatHistory && chatForm && chatInput && chatId) {
-        const socket = io.connect();
-
-        chatForm.addEventListener("submit", (event) => {
-            event.preventDefault();
-            const messageText = chatInput.value.trim();
-
-            if (messageText) {
-                socket.emit("send_message", { chat_id: chatId, message: messageText });
-                addMessageToChat("Вы", messageText, true);
-                chatInput.value = "";
-            } else {
-                console.warn("Пустое сообщение нельзя отправить.");
-            }
-        });
-
-        // Обработка входящих сообщений
-        socket.on("receive_message", (data) => {
-            if (data && data.message && data.sender) {
-                addMessageToChat(data.sender, data.message, false);
-            }
-        });
-
-        // Обработка ошибок подключения WebSocket
-        socket.on("connect_error", (error) => {
-            console.error("Ошибка подключения к WebSocket:", error);
-            addMessageToChat("Система", "Ошибка подключения к серверу.", false, true);
-        });
-
-        socket.on("error", (error) => {
-            console.error("Ошибка WebSocket:", error);
-            addMessageToChat("Система", "Ошибка WebSocket.", false, true);
-        });
-
-        // Добавление сообщения в чат
-        function addMessageToChat(sender, text, isUser, isSystem = false) {
-            const messageClass = isSystem ? "system-message" : isUser ? "message sent" : "message received";
-            const message = `
-                <div class="${messageClass}">
-                    <p><strong>${sender}:</strong> ${text}</p>
-                </div>
-            `;
-            chatHistory.insertAdjacentHTML("beforeend", message);
-            scrollChatToBottom();
-        }
-
-        // Прокрутка вниз истории чата
-        function scrollChatToBottom() {
-            if (chatHistory) {
-                chatHistory.scrollTo({
-                    top: chatHistory.scrollHeight,
-                    behavior: "smooth"
-                });
-            }
-        }
-
-        // Уведомляем сервер о присоединении к чату
-        socket.emit("join_chat", { chat_id: chatId });
-
-        // Обработка системных сообщений
-        socket.on("message", (data) => {
-            if (data && data.msg) {
-                addMessageToChat("Система", data.msg, false, true);
-            }
-        });
-    } else {
+    if (!chatHistory || !chatForm || !chatInput || !chatId) {
         console.warn("Элементы чата не найдены. Пропускаем функциональность чата.");
+        return; // Прерываем выполнение, если элементы чата не найдены
     }
+
+    console.log("Чат элементы найдены, продолжаем инициализацию.");
+
+    const socket = io.connect();
+
+    chatForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const messageText = chatInput.value.trim();
+
+        if (messageText) {
+            socket.emit("send_message", { chat_id: chatId, message: messageText });
+            addMessageToChat("Вы", messageText, true);
+            chatInput.value = "";
+        } else {
+            console.warn("Пустое сообщение нельзя отправить.");
+        }
+    });
+
+    // Обработка входящих сообщений
+    socket.on("receive_message", (data) => {
+        if (data && data.message && data.sender) {
+            addMessageToChat(data.sender, data.message, false);
+        }
+    });
+
+    // Обработка ошибок подключения WebSocket
+    socket.on("connect_error", (error) => {
+        console.error("Ошибка подключения к WebSocket:", error);
+        addMessageToChat("Система", "Ошибка подключения к серверу.", false, true);
+    });
+
+    socket.on("error", (error) => {
+        console.error("Ошибка WebSocket:", error);
+        addMessageToChat("Система", "Ошибка WebSocket.", false, true);
+    });
+
+    // Добавление сообщения в чат
+    function addMessageToChat(sender, text, isUser, isSystem = false) {
+        const messageClass = isSystem ? "system-message" : isUser ? "message sent" : "message received";
+        const message = `
+            <div class="${messageClass}">
+                <p><strong>${sender}:</strong> ${text}</p>
+            </div>
+        `;
+        chatHistory.insertAdjacentHTML("beforeend", message);
+        scrollChatToBottom();
+    }
+
+    // Прокрутка вниз истории чата
+    function scrollChatToBottom() {
+        if (chatHistory) {
+            chatHistory.scrollTo({
+                top: chatHistory.scrollHeight,
+                behavior: "smooth"
+            });
+        }
+    }
+
+    // Уведомляем сервер о присоединении к чату
+    socket.emit("join_chat", { chat_id: chatId });
+
+    // Обработка системных сообщений
+    socket.on("message", (data) => {
+        if (data && data.msg) {
+            addMessageToChat("Система", data.msg, false, true);
+        }
+    });
 
     // Обработка кнопок "Начать чат"
     const startChatButtons = document.querySelectorAll(".start-chat-btn");
@@ -93,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
             event.preventDefault();
 
             // Получение данных из атрибута кнопки
-            const targetUserId = button.dataset.userId; // Предполагается, что кнопка имеет атрибут data-user-id
+            const targetUserId = button.dataset.userId;
 
             if (!targetUserId) {
                 console.error("Целевой пользователь не указан в data-user-id.");
@@ -111,7 +114,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 .then((response) => response.json())
                 .then((data) => {
                     if (data.success && data.chat_id) {
-                        // Переходим в новый чат
                         window.location.href = `/chat/${data.chat_id}`;
                     } else {
                         console.error("Не удалось создать чат:", data.error);
