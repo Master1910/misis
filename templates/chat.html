@@ -39,21 +39,23 @@
 <!-- Кастомный JavaScript -->
 <script>
     document.addEventListener("DOMContentLoaded", () => {
+        const currentUserId = {{ current_user_id | safe }};
+        const targetUser = "{{ target_user }}";
         const socket = io.connect();
+
+        // Обработчик отправки сообщения
         const chatForm = document.getElementById('chat-form');
         const messageInput = document.getElementById('message-input');
         const chatHistory = document.getElementById('chat-history');
-        const currentUserId = {{ current_user_id }};
-        const targetUser = "{{ target_user }}";
 
-        // Обработчик отправки сообщения
         chatForm.addEventListener('submit', function (e) {
-            e.preventDefault(); // Предотвращаем перезагрузку страницы
+            e.preventDefault();
             const message = messageInput.value.trim();
             if (message) {
                 socket.emit('send_message', {
-                    receiver: targetUser, // Имя получателя
-                    message: message
+                    sender_id: currentUserId, // ID отправителя
+                    receiver: targetUser,     // Имя получателя
+                    message: message          // Текст сообщения
                 });
 
                 // Локальное добавление отправленного сообщения
@@ -66,7 +68,8 @@
         socket.on('receive_message', function (data) {
             if (data && data.message) {
                 const sender = data.sender || "Неизвестно";
-                addMessageToChat(sender, data.message, data.sender_id === currentUserId);
+                const isUser = data.sender_id === currentUserId;
+                addMessageToChat(sender, data.message, isUser);
             }
         });
 
@@ -88,4 +91,5 @@
         }
     });
 </script>
+
 {% endblock %}
