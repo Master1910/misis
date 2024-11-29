@@ -30,6 +30,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const socket = io.connect();
 
+    // Загрузка истории чата
+    fetch(`/get_chat_history`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ chat_id: chatId }),
+    })
+        .then((response) => response.json())
+        .then((messages) => {
+            if (Array.isArray(messages)) {
+                messages.forEach((msg) => {
+                    const sender = msg.sender_id === currentUserId ? "Вы" : msg.sender_id;
+                    addMessageToChat(sender, msg.message, msg.sender_id === currentUserId);
+                });
+            } else {
+                console.error("Ошибка получения сообщений:", messages.error);
+            }
+        })
+        .catch((error) => console.error("Ошибка при загрузке истории чата:", error));
+
     // Отправка сообщения
     chatForm.addEventListener("submit", (event) => {
         event.preventDefault();
