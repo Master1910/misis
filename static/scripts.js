@@ -19,13 +19,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!chatHistory || !chatForm || !chatInput || !chatId) {
         console.warn("Элементы чата не найдены. Пропускаем функциональность чата.");
-        return; // Прерываем выполнение, если элементы чата не найдены
+        return;
     }
 
     console.log("Чат элементы найдены, продолжаем инициализацию.");
 
     const socket = io.connect();
 
+    // Отправка сообщения
     chatForm.addEventListener("submit", (event) => {
         event.preventDefault();
         const messageText = chatInput.value.trim();
@@ -71,12 +72,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Прокрутка вниз истории чата
     function scrollChatToBottom() {
-        if (chatHistory) {
-            chatHistory.scrollTo({
-                top: chatHistory.scrollHeight,
-                behavior: "smooth"
-            });
-        }
+        chatHistory.scrollTo({
+            top: chatHistory.scrollHeight,
+            behavior: "smooth"
+        });
     }
 
     // Уведомляем сервер о присоединении к чату
