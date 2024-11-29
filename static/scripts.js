@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!chatHistory || !chatForm || !chatInput || !chatId) {
         console.warn("Элементы чата не найдены. Пропускаем функциональность чата.");
-        return;
+        return; // Прерываем выполнение, если элементы чата не найдены
     }
 
     console.log("Чат элементы найдены, продолжаем инициализацию.");
