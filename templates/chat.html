@@ -42,13 +42,25 @@
     document.addEventListener("DOMContentLoaded", () => {
         const currentUserId = {{ current_user_id | safe }};
         const targetUser = "{{ target_user }}";
-        const chatId = document.getElementById("chat-history").dataset.chatId;
+        const chatHistoryElement = document.getElementById("chat-history");
+        
+        if (!chatHistoryElement) {
+            console.error("Элемент с id='chat-history' не найден. Чат не инициализирован.");
+            return;
+        }
+
+        const chatId = chatHistoryElement.dataset.chatId;
         const socket = io.connect();
 
         // Обработчик отправки сообщения
         const chatForm = document.getElementById('chat-form');
         const messageInput = document.getElementById('message-input');
         const chatHistory = document.getElementById('chat-history');
+
+        if (!chatForm || !messageInput) {
+            console.error("Элементы чата (форма или поле ввода) не найдены. Чат не инициализирован.");
+            return;
+        }
 
         chatForm.addEventListener('submit', function (e) {
             e.preventDefault();
