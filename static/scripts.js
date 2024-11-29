@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatHistory = document.querySelector(".chat-history");
     const chatForm = document.querySelector("#chat-form");
     const chatInput = document.querySelector("#message-input");
-    const chatId = chatHistory?.dataset.chatId || "";
+    const chatId = "{{ chat_id | default('') }}";
 
     if (chatHistory && chatForm && chatInput && chatId) {
         const socket = io.connect();
@@ -43,23 +43,20 @@ document.addEventListener("DOMContentLoaded", () => {
         // Обработка ошибок подключения WebSocket
         socket.on("connect_error", (error) => {
             console.error("Ошибка подключения к WebSocket:", error);
-            addMessageToChat("Система", "Ошибка подключения к серверу.", false, true);
         });
 
         socket.on("error", (error) => {
             console.error("Ошибка WebSocket:", error);
-            addMessageToChat("Система", "Ошибка WebSocket.", false, true);
         });
 
         // Добавление сообщения в чат
-        function addMessageToChat(sender, text, isUser, isSystem = false) {
-            const messageClass = isSystem ? "system-message" : isUser ? "message sent" : "message received";
+        function addMessageToChat(sender, text, isUser) {
             const message = `
-                <div class="${messageClass}">
+                <div class="${isUser ? 'message sent' : 'message received'}">
                     <p><strong>${sender}:</strong> ${text}</p>
                 </div>
             `;
-            chatHistory.insertAdjacentHTML("beforeend", message);
+            chatHistory.insertAdjacentHTML('beforeend', message);
             scrollChatToBottom();
         }
 
@@ -74,12 +71,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // Уведомляем сервер о присоединении к чату
-        socket.emit("join_chat", { chat_id: chatId });
+        socket.emit("join_chat", {
+            chat_id: chatId // Идентификатор чата
+        });
 
         // Обработка системных сообщений
         socket.on("message", (data) => {
             if (data && data.msg) {
-                addMessageToChat("Система", data.msg, false, true);
+                addMessageToChat("Система", data.msg, false);
             }
         });
     } else {
@@ -101,44 +100,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // Отправка POST-запроса для создания нового чата
-            fetch("/create_chat", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ target_user_id: targetUserId }),
-            })
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.success && data.chat_id) {
-                        // Переходим в новый чат
-                        window.location.href = `/chat/${data.chat_id}`;
-                    } else {
-                        console.error("Не удалось создать чат:", data.error);
-                    }
-                })
-                .catch((error) => console.error("Ошибка при создании чата:", error));
+
         });
     });
-
-    // Улучшенная анимация для плавной прокрутки чата
-    const chatHistoryContainer = document.querySelector(".chat-history");
-    if (chatHistoryContainer) {
-        chatHistoryContainer.addEventListener("scroll", () => {
-            const scrollTop = chatHistoryContainer.scrollTop;
-            const scrollHeight = chatHistoryContainer.scrollHeight;
-            const clientHeight = chatHistoryContainer.clientHeight;
-
-            if (scrollTop + clientHeight >= scrollHeight - 5) {
-                chatHistoryContainer.style.scrollBehavior = "smooth";
-            } else {
-                chatHistoryContainer.style.scrollBehavior = "auto";
-            }
-        });
-    } else {
-        console.warn("Контейнер истории чата не найден.");
-    }
-});
 
     // Улучшенная анимация для плавной прокрутки чата
     const chatHistoryContainer = document.querySelector(".chat-history");
