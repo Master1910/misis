@@ -31,25 +31,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const socket = io.connect();
 
     // Загрузка истории чата
-    fetch(`/get_chat_history`, {
+    fetch("/get_chat_history", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ chat_id: chatId }),
+        body: JSON.stringify({ receiver: receiverName }),
     })
-        .then((response) => response.json())
-        .then((messages) => {
-            if (Array.isArray(messages)) {
-                messages.forEach((msg) => {
-                    const sender = msg.sender_id === currentUserId ? "Вы" : msg.sender_id;
-                    addMessageToChat(sender, msg.message, msg.sender_id === currentUserId);
-                });
-            } else {
-                console.error("Ошибка получения сообщений:", messages.error);
-            }
-        })
-        .catch((error) => console.error("Ошибка при загрузке истории чата:", error));
+    .then(response => response.json())
+    .then(messages => {
+        if (Array.isArray(messages)) {
+            messages.forEach(msg => {
+                const sender = msg.sender_id === currentUserId ? "Вы" : msg.sender_id;
+                addMessageToChat(sender, msg.message, msg.sender_id === currentUserId);
+            });
+        } else {
+            console.error("Ошибка получения сообщений:", messages.error);
+        }
+    })
+    .catch(error => console.error("Ошибка при загрузке истории чата:", error));
 
     // Отправка сообщения
     chatForm.addEventListener("submit", (event) => {
@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function scrollChatToBottom() {
         chatHistory.scrollTo({
             top: chatHistory.scrollHeight,
-            behavior: "smooth"
+            behavior: "smooth",
         });
     }
 
@@ -135,15 +135,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 },
                 body: JSON.stringify({ target_user_id: targetUserId }),
             })
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.success && data.chat_id) {
-                        window.location.href = `/chat/${data.chat_id}`;
-                    } else {
-                        console.error("Не удалось создать чат:", data.error);
-                    }
-                })
-                .catch((error) => console.error("Ошибка при создании чата:", error));
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.success && data.chat_id) {
+                    window.location.href = `/chat/${data.chat_id}`;
+                } else {
+                    console.error("Не удалось создать чат:", data.error);
+                }
+            })
+            .catch((error) => console.error("Ошибка при создании чата:", error));
         });
     });
 
