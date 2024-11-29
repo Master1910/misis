@@ -515,66 +515,78 @@ def handle_send_message(data):
 
 
 # WebSocket: добавление пользователя в комнату
-@socketio.on('join_chat')
-def join_chat(data):
-    """Подключение пользователя к комнате чата."""
-    username = session.get("username")
-    target_user_id = data.get("user_id")
+@socketio.on("join_chat")
+def handle_join_chat(data):
+    sender = session.get("username")
+    receiver = data.get("receiver")
 
-    if not username or not target_user_id:
+    if not sender or not receiver:
+        print("Ошибка: Не указаны участники чата.")
         return
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+    # Получаем ID участников
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
+            sender_row = cursor.fetchone()
+            cursor.execute("SELECT id FROM users WHERE username = %s", (receiver,))
+            receiver_row = cursor.fetchone()
 
-        # Получение ID текущего пользователя
-        cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
-        current_user_id = cursor.fetchone()["id"]
-
-        # Формирование имени комнаты
-        room = f"chat_{min(current_user_id, target_user_id)}_{max(current_user_id, target_user_id)}"
-
-        # Подключаем пользователя к комнате
-        join_room(room)
-
-        # Уведомление участников
-        emit("message", {"msg": f"{username} присоединился к чату."}, room=room)
-    except Exception as e:
-        print(f"Ошибка добавления в комнату: {e}")
-    finally:
-        cursor.close()
-        conn.close()
+            if sender_row and receiver_row:
+                sender_id = sender_row["id"]
+                receiver_id = receiver_row["id"]
+                room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
+                join_room(room)
+                print(f"Пользователь {sender} присоединился к комнате {room}")
+        finally:
+            cursor.close()
+            conn.close()
 
 
 
-@app.route('/get_chat_history', methods=['POST'])
+
+@app.route("/get_chat_history", methods=["POST"])
 def get_chat_history():
     data = request.json
-    sender_id = data.get('sender_id')
-    receiver_id = data.get('receiver_id')
+    sender = session.get("username")
+    receiver = data.get("receiver")
 
-    # Проверка входных данных
-    if not sender_id or not receiver_id:
-        return jsonify({"error": "Отсутствуют необходимые данные: sender_id или receiver_id"}), 400
+    if not sender or not receiver:
+        return jsonify({"error": "Не указаны участники чата"}), 400
 
-    try:
-        # Используем контекстный менеджер для подключения
-        with get_db_connection() as conn:
-            with conn.cursor(dictionary=True) as cursor:
-                query = """
-                SELECT sender_id, receiver_id, message
-                FROM messs
-                WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s)
-                ORDER BY id;  -- Предполагается, что у таблицы есть столбец id для упорядочивания
-                """
-                cursor.execute(query, (sender_id, receiver_id, receiver_id, sender_id))
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Получаем ID участников
+            cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
+            sender_row = cursor.fetchone()
+            cursor.execute("SELECT id FROM users WHERE username = %s", (receiver,))
+            receiver_row = cursor.fetchone()
+
+            if sender_row and receiver_row:
+                sender_id = sender_row["id"]
+                receiver_id = receiver_row["id"]
+
+                # Получаем сообщения из таблицы
+                cursor.execute("""
+                    SELECT sender_id, receiver_id, message, data
+                    FROM messs
+                    WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s)
+                    ORDER BY data ASC
+                """, (sender_id, receiver_id, receiver_id, sender_id))
                 messages = cursor.fetchall()
-                return jsonify(messages), 200
-    except Exception as e:
-        # Логирование ошибки
-        print(f"Ошибка при получении истории чатов: {e}")
-        return jsonify({"error": f"Ошибка при получении истории чатов: {e}"}), 500
+                return jsonify(messages)
+        except Exception as e:
+            print(f"Ошибка при загрузке истории чата: {e}")
+            return jsonify({"error": "Ошибка при загрузке истории чата"}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    return jsonify({"error": "Ошибка подключения к базе данных"}), 500
+
 
 
 @socketio.on("leave_chat")
