@@ -23,6 +23,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     console.log("Чат элементы найдены, продолжаем инициализацию.");
+    console.log("chatHistory:", chatHistory);
+    console.log("chatForm:", chatForm);
+    console.log("chatInput:", chatInput);
+    console.log("chatId:", chatId);
 
     const socket = io.connect();
 
