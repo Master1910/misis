@@ -5,7 +5,7 @@
     <h2>Чат с {{ target_user }}</h2>
     <div class="chat-container">
         <!-- История сообщений -->
-        <div class="chat-history" id="chat-history">
+        <div class="chat-history" id="chat-history" data-chat-id="{{ chat_id }}">
             {% for message in messages %}
                 <div class="message {% if message.sender_id == current_user_id %}sent{% else %}received{% endif %}">
                     <p>
@@ -20,6 +20,7 @@
                 </div>
             {% endfor %}
         </div>
+
         <!-- Форма отправки сообщения -->
         <form id="chat-form" action="javascript:void(0);">
             <input 
@@ -41,6 +42,7 @@
     document.addEventListener("DOMContentLoaded", () => {
         const currentUserId = {{ current_user_id | safe }};
         const targetUser = "{{ target_user }}";
+        const chatId = document.getElementById("chat-history").dataset.chatId;
         const socket = io.connect();
 
         // Обработчик отправки сообщения
@@ -53,9 +55,10 @@
             const message = messageInput.value.trim();
             if (message) {
                 socket.emit('send_message', {
-                    sender_id: currentUserId, // ID отправителя
-                    receiver: targetUser,     // Имя получателя
-                    message: message          // Текст сообщения
+                    chat_id: chatId,           // Идентификатор чата
+                    sender_id: currentUserId,  // ID отправителя
+                    receiver: targetUser,      // Имя получателя
+                    message: message           // Текст сообщения
                 });
 
                 // Локальное добавление отправленного сообщения
