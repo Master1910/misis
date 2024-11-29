@@ -587,18 +587,15 @@ def leave_chat(data):
         emit("message", {"msg": f"{username} покинул чат."}, room=room)
 
 
-@app.route('/api/current_user', methods=['GET'])
-def get_current_user():
-    current_user = session.get('username')  # Или другой идентификатор
-    if current_user:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT id, username FROM users WHERE username = %s", (current_user,))
-        user = cursor.fetchone()
-        conn.close()
-        if user:
-            return jsonify({"id": user['id'], "username": user['username']}), 200
-    return jsonify({"error": "User not logged in or not found"}), 401
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT username FROM users")
+    users = cursor.fetchall()
+    conn.close()
+    return jsonify(users), 200
+
 
 
 
