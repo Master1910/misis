@@ -20,7 +20,6 @@ const shapes = {
     T: [[[0, 1, 0], [1, 1, 1]]],
     Z: [[[1, 1, 0], [0, 1, 1]]],
 };
-
 // Создание сетки
 function createGrid() {
     return Array.from({ length: ROWS }, () => Array(COLUMNS).fill(0));
