@@ -611,6 +611,10 @@ def get_users():
     conn.close()
     return jsonify(users), 200
 
+# Маршрут для игры Тетрис
+@app.route('/tetris')
+def tetris():
+    return render_template('tetris.html')
 
 
 
