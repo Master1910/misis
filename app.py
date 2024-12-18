@@ -21,9 +21,9 @@ app.config['SESSION_REDIS'] = redis.StrictRedis.from_url(redis_url)
 Session(app)
 # Инициализация WebSocket
 socketio = SocketIO(app)
+# --- Конфигурация MySQL ---
+DATABASE_URL = "mysql://root:lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym@junction.proxy.rlwy.net:42004/railway"
 # --- Утилитарные функции ---
-import MySQLdb
-
 def get_db_connection():
     try:
         conn = mysql.connector.connect(
@@ -38,7 +38,6 @@ def get_db_connection():
     except MySQLdb.Error as e:
         print(f"Ошибка подключения к MySQL: {e}")
         return None
-
         
 def init_db():
     """Инициализация базы данных."""
@@ -60,11 +59,37 @@ def init_db():
                 interests TEXT
             );
         ''')
+        
+        # Создание таблицы сообщений
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS mesanges (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                sender_id INT NOT NULL,
+                receiver_id INT NOT NULL,
+                message TEXT NOT NULL,
+                FOREIGN KEY (sender_id) REFERENCES users(id),
+                FOREIGN KEY (receiver_id) REFERENCES users(id)
+            );
+        ''')
+        
+        # Создание таблицы чатов
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS chats (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_1_id INT NOT NULL,
+                user_2_id INT NOT NULL,
+                active BOOLEAN DEFAULT 0,
+                data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Добавлено поле data
+                FOREIGN KEY (user_1_id) REFERENCES users(id),
+                FOREIGN KEY (user_2_id) REFERENCES users(id)
+            );
+        ''')
+        
         conn.commit()
         cursor.close()
         conn.close()
         print("База данных успешно инициализирована.")
-    except MySQLdb.Error as e:
+    except mysql.connector.Error as e:
         print(f"Ошибка при инициализации базы данных: {e}")
 
 
@@ -146,24 +171,18 @@ def find_users_with_common_interests(user_id):
         # Получение интересов текущего пользователя
         cursor.execute("SELECT interests FROM users WHERE id = %s;", (user_id,))
         user_interests_row = cursor.fetchone()
-
         if not user_interests_row or not user_interests_row['interests']:
-            print(f"Интересы текущего пользователя (ID: {user_id}) не найдены или пусты.")
-            cursor.close()
-            conn.close()
+            print(f"Интересы текущего пользователя (ID: {user_id}) не найдены.")
             return []
 
         user_interests = set(user_interests_row['interests'].split(','))
-        print(f"Интересы текущего пользователя (ID: {user_id}): {user_interests}")
+        print(f"Интересы текущего пользователя: {user_interests}")
 
         # Поиск других пользователей с совпадающими интересами
         cursor.execute("SELECT id, username, interests FROM users WHERE id != %s;", (user_id,))
         all_users = cursor.fetchall()
-
-        # Проверка данных
-        print(f"Найдено пользователей для сравнения: {len(all_users)}")
-
         matches = []
+
         for other_user in all_users:
             if not other_user['interests']:
                 continue
@@ -172,7 +191,7 @@ def find_users_with_common_interests(user_id):
             if common_interests:
                 matches.append({
                     'id': other_user['id'],
-                    'name': other_user['username'],
+                    'name': other_user['username'],  # Меняем ключ username на name
                     'common_interests': ', '.join(common_interests)
                 })
 
@@ -184,8 +203,6 @@ def find_users_with_common_interests(user_id):
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return []
-
-
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -257,10 +274,139 @@ def find_matches():
         print(f"Найдено совпадений: {len(matches)}")
         
         return render_template('find_matches.html', matches=matches, current_user_id=user_id)
-    
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка поиска совпадений.", 500
+
+
+@app.route('/start_chat', methods=['POST'])
+def start_chat():
+    data = request.json
+
+    # Проверка входных данных
+    user_1_id = data.get('user_1_id')
+    user_2_id = data.get('user_2_id')
+    if not user_1_id or not user_2_id:
+        return jsonify({'error': 'Некорректные данные.'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Проверяем существование чата
+        query = """
+            SELECT id FROM chatss
+            WHERE (user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s)
+        """
+        cursor.execute(query, (user_1_id, user_2_id, user_2_id, user_1_id))
+        existing_chat = cursor.fetchone()
+
+        if existing_chat:
+            chat_id = existing_chat['id']
+        else:
+            # Создание нового чата с указанием CURRENT_TIMESTAMP для 'data'
+            insert_query = """
+                INSERT INTO chatss (user_1_id, user_2_id, active, data) 
+                VALUES (%s, %s, 0, CURRENT_TIMESTAMP)
+            """
+            cursor.execute(insert_query, (user_1_id, user_2_id))
+            conn.commit()
+            chat_id = cursor.lastrowid
+
+        return jsonify({'chat_id': chat_id}), 200
+    except Exception as e:
+        print(f"Ошибка в start_chat: {e}")
+        return jsonify({'error': 'Ошибка сервера.'}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+
+@app.route('/create_chat/<int:target_user_id>', methods=['POST'])
+def create_chat(target_user_id):
+    """Создание чата между текущим пользователем и другим пользователем."""
+    current_user = session.get("username")
+    if not current_user:
+        return redirect(url_for("login"))
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Получение ID текущего пользователя
+        cursor.execute("SELECT id FROM users WHERE username = %s", (current_user,))
+        current_user_row = cursor.fetchone()
+        if not current_user_row:
+            return "Пользователь не найден в базе данных.", 404
+        current_user_id = current_user_row["id"]
+
+        # Проверка существования целевого пользователя
+        cursor.execute("SELECT username FROM users WHERE id = %s", (target_user_id,))
+        target_user = cursor.fetchone()
+        if not target_user:
+            return "Целевой пользователь не найден.", 404
+
+        target_user_username = target_user["username"]
+
+        # Создание чата (сохранение в базе данных)
+        cursor.execute("INSERT INTO chatss (user_1_id, user_2_id) VALUES (%s, %s)", (current_user_id, target_user_id))
+        conn.commit()
+
+        return redirect(url_for('chat', user_id=target_user_id))
+
+    except Exception as e:
+        print(f"Ошибка при создании чата: {e}")
+        return f"Ошибка при создании чата: {e}", 500
+
+# Маршрут страницы чата
+@app.route('/chat/<int:chat_id>', methods=['GET', 'POST'])
+def chat(chat_id):
+    """Чат между текущим пользователем и другим пользователем."""
+    current_user = session.get("username")
+    if not current_user:
+        return redirect(url_for("login"))
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Получение ID текущего пользователя
+        cursor.execute("SELECT id FROM users WHERE username = %s", (current_user,))
+        current_user_row = cursor.fetchone()
+        
+        if not current_user_row:
+            return "Пользователь не найден.", 404
+
+        current_user_id = current_user_row["id"]
+
+        # Проверка существования чата
+        cursor.execute("SELECT * FROM chatss WHERE id = %s AND (user_1_id = %s OR user_2_id = %s)", (chat_id, current_user_id, current_user_id))
+        chat = cursor.fetchone()
+
+        if not chat:
+            return "Чат не найден или вы не являетесь участником этого чата.", 404
+
+        # Получаем информацию о собеседнике
+        target_user_id = chat["user_1_id"] if chat["user_1_id"] != current_user_id else chat["user_2_id"]
+        cursor.execute("SELECT username FROM users WHERE id = %s", (target_user_id,))
+        target_user = cursor.fetchone()
+        
+        if not target_user:
+            return "Собеседник не найден.", 404
+
+        target_user_username = target_user["username"]
+
+        # Получаем сообщения чата (если необходимо)
+        cursor.execute("SELECT * FROM messs WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s) ORDER BY id", 
+                       (current_user_id, target_user_id, target_user_id, current_user_id))
+        messages = cursor.fetchall()
+
+        return render_template("chat.html", target_user=target_user_username, messages=messages)
+
+    except Exception as e:
+        print(f"Ошибка при обработке чата: {e}")
+        return f"Ошибка: {e}", 500
 
 
 
@@ -281,98 +427,187 @@ def internal_server_error(e):
     """Обработка ошибки сервера."""
     return render_template("500.html"), 500
 
-#все что связано с чатами
-@socketio.on('join')
-def on_join(data):
-    username = session.get('username')
-    if username:
-        room = data['room']
-        join_room(room)
-        emit('message', {'msg': f'{username} joined the chat'}, room=room)
+# WebSocket: отправка сообщений
+@socketio.on("send_message")
+def handle_send_message(data):
+    """Обработка отправки сообщений."""
+    sender = session.get("username")
+    receiver = data.get("receiver")  # Используем имя получателя, как и на клиентской стороне
+    message = data.get("message")
 
-@socketio.on('send_message')
-def handle_message(data):
-    room = data['room']
-    message = data['message']
-    username = session.get('username')
-    
-    # Сохранить сообщение в базе данных
+    # Отладочные сообщения
+    print(f"Получены данные для отправки сообщения: sender: {sender}, receiver: {receiver}, message: {message}")
+
+    if not sender or not receiver or not message:
+        print("Ошибка: Неверные данные для отправки сообщения.")
+        return
+
+    # Подключение к базе данных
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''INSERT INTO messages (chat_id, sender_id, message)
-                      VALUES (%s, %s, %s)''', (room, username, message))
-    conn.commit()
-    cursor.close()
-    conn.close()
-    
-    # Отправить сообщение всем участникам чата
-    emit('message', {'msg': f'{username}: {message}'}, room=room)
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
 
-@socketio.on('leave')
-def on_leave(data):
-    username = session.get('username')
-    if username:
-        room = data['room']
-        emit('message', {'msg': f'{username} left the chat'}, room=room)
-        leave_room(room)
+            # Получаем ID отправителя
+            cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
+            sender_row = cursor.fetchone()
+            if sender_row:
+                sender_id = sender_row["id"]
+                print(f"ID отправителя: {sender_id}")
+            else:
+                print(f"Не найден отправитель с именем {sender}")
+                return
 
-@app.route('/start_chat', methods=['POST'])
-def start_chat():
-    """Создание чата между двумя пользователями."""
-    data = request.get_json()
-    user_1_id = data.get('user_1_id')
-    user_2_id = data.get('user_2_id')
+            # Получаем ID получателя
+            cursor.execute("SELECT id FROM users WHERE username = %s", (receiver,))
+            receiver_row = cursor.fetchone()
+            if not receiver_row:
+                print(f"Не найден получатель с именем {receiver}")
+                return
+            receiver_id = receiver_row["id"]
+            print(f"ID получателя: {receiver_id}")
 
-    if not user_1_id or not user_2_id:
-        return jsonify({'error': 'Некорректные данные пользователей'}), 400
+            # Находим или создаем чат
+            cursor.execute(""" 
+                SELECT id FROM chats 
+                WHERE (user_1_id = %s AND user_2_id = %s) OR (user_1_id = %s AND user_2_id = %s)
+            """, (sender_id, receiver_id, receiver_id, sender_id))
+            existing_chat = cursor.fetchone()
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+            if not existing_chat:
+                # Если чата нет, создаем новый
+                cursor.execute(""" 
+                    INSERT INTO chats (user_1_id, user_2_id, active) 
+                    VALUES (%s, %s, 0)
+                """, (sender_id, receiver_id))
+                conn.commit()
+                chat_id = cursor.lastrowid
+                print(f"Создан новый чат с ID {chat_id}")
+            else:
+                chat_id = existing_chat["id"]
+                print(f"Чат найден с ID {chat_id}")
 
-        cursor.execute('''INSERT INTO chats (user_1_id, user_2_id, active) 
-                          VALUES (%s, %s, 1)''', (user_1_id, user_2_id))
-        conn.commit()
+            # Записываем сообщение в таблицу messs
+            cursor.execute(""" 
+                INSERT INTO messs (sender_id, receiver_id, message) 
+                VALUES (%s, %s, %s)
+            """, (sender_id, receiver_id, message))
+            conn.commit()
+            print("Сообщение успешно добавлено в таблицу messs.")
 
-        cursor.execute('SELECT LAST_INSERT_ID();')
-        chat_id = cursor.fetchone()[0]
+            # Уведомление участников чата
+            room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
+            emit("receive_message", {
+                "sender": sender,
+                "sender_id": sender_id,
+                "receiver_id": receiver_id,
+                "message": message
+            }, room=room)
 
-        cursor.close()
-        conn.close()
-
-        return jsonify({'chat_id': chat_id})
-
-    except Exception as e:
-        print(f"Ошибка создания чата: {e}")
-        return jsonify({'error': 'Не удалось создать чат. Попробуйте позже.'}), 500
+        except Exception as e:
+            print(f"Ошибка при отправке сообщения: {e}")
+        finally:
+            cursor.close()
+            conn.close()
 
 
 
-@app.route('/start_chat/<int:match_id>')
-def start_match_chat(match_id):
-    """Начать чат с пользователем с совпадениями."""
+
+
+# WebSocket: добавление пользователя в комнату
+@socketio.on("join_chat")
+def handle_join_chat(data):
+    sender = session.get("username")
+    receiver = data.get("receiver")
+
+    if not sender or not receiver:
+        print("Ошибка: Не указаны участники чата.")
+        return
+
+    # Получаем ID участников
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
+            sender_row = cursor.fetchone()
+            cursor.execute("SELECT id FROM users WHERE username = %s", (receiver,))
+            receiver_row = cursor.fetchone()
+
+            if sender_row and receiver_row:
+                sender_id = sender_row["id"]
+                receiver_id = receiver_row["id"]
+                room = f"chat_{min(sender_id, receiver_id)}_{max(sender_id, receiver_id)}"
+                join_room(room)
+                print(f"Пользователь {sender} присоединился к комнате {room}")
+        finally:
+            cursor.close()
+            conn.close()
+
+
+
+
+@app.route("/get_chat_history", methods=["POST"])
+def get_chat_history():
+    data = request.json
+    sender = session.get("username")
+    receiver = data.get("receiver")
+
+    if not sender or not receiver:
+        return jsonify({"error": "Не указаны участники чата"}), 400
+
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor(dictionary=True)
+            # Получаем ID участников
+            cursor.execute("SELECT id FROM users WHERE username = %s", (sender,))
+            sender_row = cursor.fetchone()
+            cursor.execute("SELECT id FROM users WHERE username = %s", (receiver,))
+            receiver_row = cursor.fetchone()
+
+            if sender_row and receiver_row:
+                sender_id = sender_row["id"]
+                receiver_id = receiver_row["id"]
+
+                # Получаем сообщения из таблицы
+                cursor.execute("""
+                    SELECT sender_id, receiver_id, message, data
+                    FROM messs
+                    WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s)
+                    ORDER BY data ASC
+                """, (sender_id, receiver_id, receiver_id, sender_id))
+                messages = cursor.fetchall()
+                return jsonify(messages)
+        except Exception as e:
+            print(f"Ошибка при загрузке истории чата: {e}")
+            return jsonify({"error": "Ошибка при загрузке истории чата"}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    return jsonify({"error": "Ошибка подключения к базе данных"}), 500
+
+
+
+@socketio.on("leave_chat")
+def leave_chat(data):
+    """Отключение пользователя от комнаты чата."""
+    room = data.get("room")
     username = session.get("username")
-    if not username:
-        return redirect(url_for('login'))
-    
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        # Поиск информации о пользователе для чата
-        cursor.execute("SELECT username FROM users WHERE id = %s;", (match_id,))
-        match_user = cursor.fetchone()
-        
-        if not match_user:
-            return "Пользователь не найден.", 404
+    if username and room:
+        leave_room(room)
+        emit("message", {"msg": f"{username} покинул чат."}, room=room)
 
-        # Создание комнаты для чата
-        room = f"chat_{match_id}_{username}"
-        
-        # Отправка информации о чате на страницу
-        return render_template('chat.html', match_user=match_user[0], room=room)
-    except Exception as e:
-        print(f"Ошибка базы данных: {e}")
-        return "Ошибка при создании чата.", 500
+
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT username FROM users")
+    users = cursor.fetchall()
+    conn.close()
+    return jsonify(users), 200
+
 
 
 
