@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ title }}{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='tetris.css') }}"> <!-- Подключаем стили для Тетриса -->
 </head>
 <body>
     <!-- Боковое меню -->
@@ -18,7 +17,6 @@
             <a href="{{ url_for('rules') }}">Правила</a>
             <a href="{{ url_for('how_it_works') }}">Как работает</a>
             <a href="{{ url_for('how_it_built') }}">Как устроен</a>
-            <a href="{{ url_for('tetris') }}">Игры</a>
             {% if username %}
                 <a href="{{ url_for('find_matches') }}">Найти совпадения</a>
                 <a href="{{ url_for('logout') }}">Выход</a>
@@ -36,31 +34,8 @@
         <main>
             <div class="container fade">
                 {% block content %}
-                <!-- Контент игры Тетрис -->
-                <div id="tetris-container">
-                    <h1>Игра Тетрис</h1>
-
-                    <!-- Кнопка Старт -->
-                    <button id="start-button" onclick="startGame()">Старт</button>
-
-                    <!-- Управление -->
-                    <div id="controls">
-                        <p>Управление:</p>
-                        <ul>
-                            <li>Стрелки влево/вправ - перемещение</li>
-                            <li>Стрелка вниз - ускорение падения</li>
-                            <li>Пробел - вращение</li>
-                        </ul>
-                    </div>
-
-                    <!-- Счет -->
-                    <div id="score">
-                        <p>Очки: <span class="score">0</span></p>
-                    </div>
-
-                    <!-- Канвас для игры -->
-                    <canvas id="tetris" width="300" height="600"></canvas>
-                </div>
+                <h2>Добро пожаловать!</h2>
+                <p>Используйте боковое меню для навигации.</p>
                 {% endblock %}
             </div>
         </main>
@@ -73,6 +48,5 @@
 
     <!-- Подключение JavaScript -->
     <script src="{{ url_for('static', filename='scripts.js') }}"></script>
-    <script src="{{ url_for('static', filename='tetris.js') }}"></script> <!-- Подключаем JS для Тетриса -->
 </body>
 </html>
