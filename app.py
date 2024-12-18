@@ -27,7 +27,7 @@ DATABASE_URL = "mysql://root:lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym@junction.proxy.rlw
 def get_db_connection():
     try:
         conn = mysql.connector.connect(
-            host="81.200.146.168",
+            host="83.147.246.250",
             user="gen_user",
             passwd="MasterElitVac",  # Замените на реальный пароль
             db="default_db",
