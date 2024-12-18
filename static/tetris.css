@@ -1,108 +1,118 @@
 /* --- Общие стили --- */
 body {
-    background: linear-gradient(45deg, #FF7F50, #FF4500, #FF6347);
-    background-size: 200% 200%;
-    animation: gradient-animation 6s ease infinite;
+    background: #222; /* Тёмный фон */
     color: white;
     font-family: Arial, sans-serif;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* --- Контейнер игры --- */
+.tetris-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 /* --- Поле для игры --- */
 #tetris {
     display: block;
-    margin: 50px auto;
-    background: rgba(0, 0, 0, 0.8);
-    border: 5px solid white;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    background-color: #111; /* Чёрный фон для игрового поля */
+    border: 4px solid #444; /* Серые границы */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
 }
 
-/* --- Описание и заголовок --- */
+/* --- Сетка игрового поля --- */
+canvas {
+    background-color: #111;
+    border: 3px solid #444;
+}
+
+/* --- Заголовок игры --- */
 h1 {
     text-align: center;
     font-size: 2.5em;
-    margin-top: 30px;
     color: #FFD700;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    margin-bottom: 20px;
 }
 
-/* --- Контейнер информации --- */
-.game-info {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 1.5em;
-}
-
-.score, .level {
-    margin: 10px 0;
-    color: #FFD700;
-}
-
-/* --- Анимация фона --- */
-@keyframes gradient-animation {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
-/* --- Мобильные кнопки --- */
+/* --- Мобильные кнопки управления --- */
 .mobile-controls {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
     display: flex;
+    justify-content: center;
     gap: 10px;
-    z-index: 10; /* Ensure controls are above the canvas */
+    margin-top: 20px;
 }
 
 .mobile-controls button {
     width: 60px;
     height: 60px;
     font-size: 24px;
-    border: none;
-    border-radius: 5px;
-    background: linear-gradient(90deg, #FF6347, #FF4500);
+    background-color: #222;
     color: white;
+    border: 2px solid #555;
+    border-radius: 10px;
     cursor: pointer;
-    transition: transform 0.2s ease;
+    transition: all 0.2s ease;
+}
+
+.mobile-controls button:hover {
+    background-color: #444;
 }
 
 .mobile-controls button:active {
     transform: scale(0.9);
 }
 
-/* --- Кнопка Старт --- */
+/* --- Стартовая кнопка --- */
 #start-button {
-    display: block;
-    margin: 20px auto;
+    margin-top: 20px;
     padding: 10px 20px;
     font-size: 1.5em;
-    background-color: #FF6347;
-    color: white;
-    border: none;
+    background-color: #444;
+    color: #FFD700;
+    border: 2px solid #555;
     border-radius: 5px;
     cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 #start-button:hover {
-    background-color: #FF4500;
+    background-color: #555;
 }
 
-#controls {
+#start-button:active {
+    transform: scale(0.95);
+}
+
+/* --- Информация об игре (очки и уровень) --- */
+.game-info {
     text-align: center;
-    margin-top: 20px;
-}
-
-#controls p {
+    margin-top: 10px;
     font-size: 1.2em;
 }
 
-#controls ul {
-    list-style: none;
-    padding: 0;
+.score, .level {
+    color: #FFD700;
+    margin: 5px 0;
 }
 
-#controls li {
-    font-size: 1em;
-    margin: 5px 0;
+/* --- Адаптивное управление для мобильных устройств --- */
+@media (max-width: 768px) {
+    .mobile-controls {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    #start-button {
+        position: fixed;
+        bottom: 100px;
+    }
 }
