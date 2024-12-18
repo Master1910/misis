@@ -349,6 +349,39 @@ def start_chat(match_id):
         return "Ошибка при создании чата.", 500
 
 
+@app.route('/start_chat', methods=['POST'])
+def start_chat():
+    """Создание чата между двумя пользователями."""
+    data = request.get_json()
+    user_1_id = data.get('user_1_id')
+    user_2_id = data.get('user_2_id')
+    
+    # Проверка на корректность данных
+    if not user_1_id or not user_2_id:
+        return jsonify({'error': 'Некорректные данные пользователей'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Создание нового чата в базе данных
+        cursor.execute('''INSERT INTO chats (user_1_id, user_2_id, active) 
+                          VALUES (%s, %s, 1)''', (user_1_id, user_2_id))
+        conn.commit()
+
+        # Получаем ID нового чата
+        cursor.execute('SELECT LAST_INSERT_ID();')
+        chat_id = cursor.fetchone()[0]
+        cursor.close()
+        conn.close()
+
+        return jsonify({'chat_id': chat_id})
+    
+    except Exception as e:
+        print(f"Ошибка создания чата: {e}")
+        return jsonify({'error': 'Не удалось создать чат. Попробуйте позже.'}), 500
+
+
 
 # --- Запуск ---
 if __name__ == '__main__':
