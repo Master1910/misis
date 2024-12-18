@@ -147,7 +147,9 @@ def find_users_with_common_interests(user_id):
         cursor.execute("SELECT interests FROM users WHERE id = %s;", (user_id,))
         user_interests_row = cursor.fetchone()
         if not user_interests_row or not user_interests_row['interests']:
-            print(f"Интересы текущего пользователя (ID: {user_id}) не найдены.")
+            print(f"Интересы текущего пользователя (ID: {user_id}) не найдены или пусты.")
+            cursor.close()
+            conn.close()
             return []
 
         user_interests = set(user_interests_row['interests'].split(','))
@@ -178,6 +180,7 @@ def find_users_with_common_interests(user_id):
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return []
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -249,9 +252,11 @@ def find_matches():
         print(f"Найдено совпадений: {len(matches)}")
         
         return render_template('find_matches.html', matches=matches, current_user_id=user_id)
+    
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка поиска совпадений.", 500
+
 
 
 
