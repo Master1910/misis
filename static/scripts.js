@@ -19,23 +19,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!chatHistory || !chatForm || !chatInput || !chatId) {
         console.warn("Элементы чата не найдены. Пропускаем функциональность чата.");
-        return;
+        return; // Прерываем выполнение, если элементы чата не найдены
     }
 
     console.log("Чат элементы найдены, продолжаем инициализацию.");
+    console.log("chatHistory:", chatHistory);
+    console.log("chatForm:", chatForm);
+    console.log("chatInput:", chatInput);
+    console.log("chatId:", chatId);
+
     const socket = io.connect();
 
     // Загрузка истории чата
     fetch("/get_chat_history", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId }),
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ receiver: receiverName }),
     })
     .then(response => response.json())
     .then(messages => {
         if (Array.isArray(messages)) {
             messages.forEach(msg => {
-                const sender = msg.sender_id === currentUserId ? "Вы" : msg.sender;
+                const sender = msg.sender_id === currentUserId ? "Вы" : msg.sender_id;
                 addMessageToChat(sender, msg.message, msg.sender_id === currentUserId);
             });
         } else {
@@ -44,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
     })
     .catch(error => console.error("Ошибка при загрузке истории чата:", error));
 
-    // Отправка сообщений
+    // Отправка сообщения
     chatForm.addEventListener("submit", (event) => {
         event.preventDefault();
         const messageText = chatInput.value.trim();
@@ -61,19 +68,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // Обработка входящих сообщений
     socket.on("receive_message", (data) => {
         if (data && data.message && data.sender) {
-            const senderName = data.sender_id === currentUserId ? "Вы" : data.sender;
-            addMessageToChat(senderName, data.message, data.sender_id === currentUserId);
+            addMessageToChat(data.sender, data.message, false);
         }
     });
 
-    // Обработка системных сообщений
-    socket.on("system_message", (data) => {
-        if (data && data.msg) {
-            addMessageToChat("Система", data.msg, false, true);
-        }
-    });
-
-    // Обработка ошибок подключения
+    // Обработка ошибок подключения WebSocket
     socket.on("connect_error", (error) => {
         console.error("Ошибка подключения к WebSocket:", error);
         addMessageToChat("Система", "Ошибка подключения к серверу.", false, true);
@@ -84,7 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
         addMessageToChat("Система", "Ошибка WebSocket.", false, true);
     });
 
-    // Добавление сообщений в чат
+    // Добавление сообщения в чат
     function addMessageToChat(sender, text, isUser, isSystem = false) {
         const messageClass = isSystem ? "system-message" : isUser ? "message sent" : "message received";
         const message = `
@@ -104,41 +103,63 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Уведомляем сервер о присоединении к чату
+    socket.emit("join_chat", { chat_id: chatId });
+
+    // Обработка системных сообщений
+    socket.on("message", (data) => {
+        if (data && data.msg) {
+            addMessageToChat("Система", data.msg, false, true);
+        }
+    });
+
     // Обработка кнопок "Начать чат"
     const startChatButtons = document.querySelectorAll(".start-chat-btn");
-    startChatButtons.forEach(button => {
+    startChatButtons.forEach((button) => {
         button.addEventListener("click", (event) => {
             event.preventDefault();
+
+            // Получение данных из атрибута кнопки
             const targetUserId = button.dataset.userId;
 
             if (!targetUserId) {
-                console.error("Целевой пользователь не указан.");
+                console.error("Целевой пользователь не указан в data-user-id.");
                 return;
             }
 
+            // Отправка POST-запроса для создания нового чата
             fetch("/create_chat", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                },
                 body: JSON.stringify({ target_user_id: targetUserId }),
             })
-            .then(response => response.json())
-            .then(data => {
+            .then((response) => response.json())
+            .then((data) => {
                 if (data.success && data.chat_id) {
                     window.location.href = `/chat/${data.chat_id}`;
                 } else {
                     console.error("Не удалось создать чат:", data.error);
                 }
             })
-            .catch(error => console.error("Ошибка при создании чата:", error));
+            .catch((error) => console.error("Ошибка при создании чата:", error));
         });
     });
 
-    // Улучшенная анимация прокрутки
+    // Улучшенная анимация для плавной прокрутки чата
     const chatHistoryContainer = document.querySelector(".chat-history");
     if (chatHistoryContainer) {
         chatHistoryContainer.addEventListener("scroll", () => {
-            const { scrollTop, scrollHeight, clientHeight } = chatHistoryContainer;
-            chatHistoryContainer.style.scrollBehavior = (scrollTop + clientHeight >= scrollHeight - 5) ? "smooth" : "auto";
+            const scrollTop = chatHistoryContainer.scrollTop;
+            const scrollHeight = chatHistoryContainer.scrollHeight;
+            const clientHeight = chatHistoryContainer.clientHeight;
+
+            if (scrollTop + clientHeight >= scrollHeight - 5) {
+                chatHistoryContainer.style.scrollBehavior = "smooth";
+            } else {
+                chatHistoryContainer.style.scrollBehavior = "auto";
+            }
         });
     } else {
         console.warn("Контейнер истории чата не найден.");
@@ -153,7 +174,11 @@ function toggleSidebar() {
         console.error("Не найден элемент бокового меню.");
         return;
     }
-    const isOpen = sidebar.style.width === "250px";
-    sidebar.style.width = isOpen ? "0" : "250px";
-    mainContent.classList.toggle("menu-open", !isOpen);
+    if (sidebar.style.width === "250px") {
+        sidebar.style.width = "0";
+        mainContent.classList.remove("menu-open");
+    } else {
+        sidebar.style.width = "250px";
+        mainContent.classList.add("menu-open");
+    }
 }
