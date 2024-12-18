@@ -10,6 +10,7 @@
                 <strong>{{ match.name }}</strong>: Общие интересы - {{ match.common_interests }}
                 <button 
                     class="chat-btn" 
+                    data-user-id="{{ match.id }}"
                     onclick="startChat({{ current_user_id or 0 }}, {{ match.id or 0 }})">
                     Начать чат
                 </button>
@@ -23,30 +24,20 @@
 
 <script>
     function startChat(user_1_id, user_2_id) {
-        // Проверка корректности переданных данных
         if (!user_1_id || !user_2_id) {
             console.error("Ошибка: идентификаторы пользователей некорректны.");
             alert("Не удалось начать чат. Проверьте данные пользователей.");
             return;
         }
 
-        console.log("Старт чата для пользователей:", user_1_id, user_2_id); // Отладка
-
         fetch("{{ url_for('start_chat') }}", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_1_id: user_1_id, user_2_id: user_2_id }),
+            body: JSON.stringify({ user_1_id, user_2_id }),
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("Ошибка сервера: " + response.status);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             if (data.chat_id) {
-                console.log("Чат создан, ID:", data.chat_id); // Отладка
-                // Перенаправление в созданный чат
                 window.location.href = `/chat/${data.chat_id}`;
             } else {
                 console.error("Ошибка создания чата:", data);
