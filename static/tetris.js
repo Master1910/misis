@@ -86,6 +86,37 @@ function drawPiece(piece, offset) {
     });
 }
 
+// Отрисовка сетки
+function drawGrid() {
+    context.strokeStyle = '#444';
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLUMNS; x++) {
+            context.strokeRect(x, y, 1, 1);
+        }
+    }
+}
+
+// Отрисовка зафиксированных фигур
+function drawGridContent() {
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLUMNS; x++) {
+            if (grid[y][x] !== 0) {
+                context.fillStyle = 'blue';  // Цвет зафиксированных фигур
+                context.fillRect(x, y, 1, 1);
+            }
+        }
+    }
+}
+
+// Обновленная функция отрисовки
+function draw() {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    drawGridContent();  // Зафиксированные фигуры
+    drawPiece(currentPiece, position);  // Текущая фигура
+    drawGrid();  // Сетка
+}
+
+
 // Перемещение фигуры вниз
 function dropPiece() {
     position.y++;
