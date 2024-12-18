@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from flask_session import Session
 from flask_socketio import SocketIO, join_room, emit
 from werkzeug.security import generate_password_hash, check_password_hash
-import mysql.connector
+import MySQLdb
 import os
 import redis
 
@@ -24,20 +24,23 @@ socketio = SocketIO(app)
 # --- Конфигурация MySQL ---
 DATABASE_URL = "mysql://root:lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym@junction.proxy.rlwy.net:42004/railway"
 # --- Утилитарные функции ---
+import MySQLdb
+
 def get_db_connection():
     try:
-        conn = mysql.connector.connect(
-            host="junction.proxy.rlwy.net",
-            port=42004,
-            user="root",
-            password="lXTWowVLCSEKTJmXtFCQLNcmBRDxmgym",
-            database="railway"
+        conn = MySQLdb.connect(
+            host="81.200.146.168",
+            user="gen_user",
+            passwd="MasterElitVac",  # Замените на реальный пароль
+            db="default_db",
+            port=3306
         )
         print("Соединение с базой данных успешно установлено.")
         return conn
-    except mysql.connector.Error as e:
+    except MySQLdb.Error as e:
         print(f"Ошибка подключения к MySQL: {e}")
         return None
+
         
 def init_db():
     """Инициализация базы данных."""
@@ -78,8 +81,8 @@ def init_db():
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 user_1_id INT NOT NULL,
                 user_2_id INT NOT NULL,
-                active BOOLEAN DEFAULT 0,
-                data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Добавлено поле data
+                active TINYINT(1) DEFAULT 0,  -- Изменен тип данных active
+                data DATETIME DEFAULT CURRENT_TIMESTAMP,  -- Изменено поле data
                 FOREIGN KEY (user_1_id) REFERENCES users(id),
                 FOREIGN KEY (user_2_id) REFERENCES users(id)
             );
@@ -89,7 +92,7 @@ def init_db():
         cursor.close()
         conn.close()
         print("База данных успешно инициализирована.")
-    except mysql.connector.Error as e:
+    except MySQLdb.Error as e:
         print(f"Ошибка при инициализации базы данных: {e}")
 
 
