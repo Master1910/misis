@@ -322,35 +322,8 @@ def on_leave(data):
         emit('message', {'msg': f'{username} left the chat'}, room=room)
         leave_room(room)
 
-@app.route('/start_chat/<int:match_id>')
-def start_chat(match_id):
-    """Начать чат с пользователем с совпадениями."""
-    username = session.get("username")
-    if not username:
-        return redirect(url_for('login'))
-    
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        # Поиск информации о пользователе для чата
-        cursor.execute("SELECT username FROM users WHERE id = %s;", (match_id,))
-        match_user = cursor.fetchone()
-        
-        if not match_user:
-            return "Пользователь не найден.", 404
-
-        # Создание комнаты для чата
-        room = f"chat_{match_id}_{username}"
-        
-        # Отправка информации о чате на страницу
-        return render_template('chat.html', match_user=match_user[0], room=room)
-    except Exception as e:
-        print(f"Ошибка базы данных: {e}")
-        return "Ошибка при создании чата.", 500
-
-
 @app.route('/start_chat', methods=['POST'])
-def start_chat():
+def create_chat():
     """Создание чата между двумя пользователями."""
     data = request.get_json()
     user_1_id = data.get('user_1_id')
@@ -380,6 +353,33 @@ def start_chat():
     except Exception as e:
         print(f"Ошибка создания чата: {e}")
         return jsonify({'error': 'Не удалось создать чат. Попробуйте позже.'}), 500
+
+
+@app.route('/start_chat/<int:match_id>')
+def start_match_chat(match_id):
+    """Начать чат с пользователем с совпадениями."""
+    username = session.get("username")
+    if not username:
+        return redirect(url_for('login'))
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # Поиск информации о пользователе для чата
+        cursor.execute("SELECT username FROM users WHERE id = %s;", (match_id,))
+        match_user = cursor.fetchone()
+        
+        if not match_user:
+            return "Пользователь не найден.", 404
+
+        # Создание комнаты для чата
+        room = f"chat_{match_id}_{username}"
+        
+        # Отправка информации о чате на страницу
+        return render_template('chat.html', match_user=match_user[0], room=room)
+    except Exception as e:
+        print(f"Ошибка базы данных: {e}")
+        return "Ошибка при создании чата.", 500
 
 
 
