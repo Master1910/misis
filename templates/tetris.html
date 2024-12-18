@@ -160,4 +160,30 @@
         setInterval(dropPiece, 1000);
         document.getElementById('start-button').disabled = true;
     }
+
+    // Управление с клавиатуры
+    document.addEventListener('keydown', event => {
+        if (event.key === 'ArrowLeft') movePiece(-1);
+        if (event.key === 'ArrowRight') movePiece(1);
+        if (event.key === 'ArrowDown') dropPiece();
+        if (event.key === ' ') rotatePiece();
+        event.preventDefault(); // Предотвращаем стандартное поведение (например, прокрутку)
+    });
+
+    // Перемещение фигуры
+    function movePiece(direction) {
+        position.x += direction;
+        if (collision()) position.x -= direction;
+        draw();
+    }
+
+    // Вращение фигуры
+    function rotatePiece() {
+        const prevPiece = currentPiece.map(row => [...row]);
+        currentPiece = currentPiece[0].map((_, i) =>
+            currentPiece.map(row => row[i]).reverse()
+        );
+        if (collision()) currentPiece = prevPiece;
+        draw();
+    }
 </script>
