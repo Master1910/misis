@@ -281,12 +281,6 @@ def internal_server_error(e):
     """Обработка ошибки сервера."""
     return render_template("500.html"), 500
 
-# Маршрут для игры Тетрис
-#@app.route('/tetris')
-#def tetris():
-  #  return render_template('tetris.html')
-
-
 #все что связано с чатами
 @socketio.on('join')
 def on_join(data):
