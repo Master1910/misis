@@ -4,6 +4,7 @@ body {
     background-size: 200% 200%;
     animation: gradient-animation 6s ease infinite;
     color: white;
+    font-family: Arial, sans-serif;
 }
 
 /* --- Поле для игры --- */
@@ -42,6 +43,8 @@ h1 {
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
+
+/* --- Мобильные кнопки --- */
 .mobile-controls {
     position: absolute;
     bottom: 20px;
@@ -49,6 +52,7 @@ h1 {
     transform: translateX(-50%);
     display: flex;
     gap: 10px;
+    z-index: 10; /* Ensure controls are above the canvas */
 }
 
 .mobile-controls button {
@@ -67,3 +71,38 @@ h1 {
     transform: scale(0.9);
 }
 
+/* --- Кнопка Старт --- */
+#start-button {
+    display: block;
+    margin: 20px auto;
+    padding: 10px 20px;
+    font-size: 1.5em;
+    background-color: #FF6347;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#start-button:hover {
+    background-color: #FF4500;
+}
+
+#controls {
+    text-align: center;
+    margin-top: 20px;
+}
+
+#controls p {
+    font-size: 1.2em;
+}
+
+#controls ul {
+    list-style: none;
+    padding: 0;
+}
+
+#controls li {
+    font-size: 1em;
+    margin: 5px 0;
+}
