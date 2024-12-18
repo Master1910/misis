@@ -282,9 +282,9 @@ def internal_server_error(e):
     return render_template("500.html"), 500
 
 # Маршрут для игры Тетрис
-@app.route('/tetris')
-def tetris():
-    return render_template('tetris.html')
+#@app.route('/tetris')
+#def tetris():
+  #  return render_template('tetris.html')
 
 
 #все что связано с чатами
