@@ -9,8 +9,9 @@
             <li>
                 <strong>{{ match.name }}</strong>: Общие интересы - {{ match.common_interests }}
                 <button 
-                    class="start-chat-btn" 
-                    data-user-id="{{ match.id }}">
+                    class="chat-btn" 
+                    data-user-id="{{ match.id }}"
+                    onclick="startChat({{ current_user_id or 0 }}, {{ match.id or 0 }})">
                     Начать чат
                 </button>
             </li>
@@ -22,7 +23,6 @@
 </div>
 
 <script>
-    // Функция для начала чата
     function startChat(user_1_id, user_2_id) {
         if (!user_1_id || !user_2_id) {
             console.error("Ошибка: идентификаторы пользователей некорректны.");
@@ -49,21 +49,5 @@
             alert("Произошла ошибка при соединении с сервером. Попробуйте позже.");
         });
     }
-
-    // Обработчик кнопок "Начать чат"
-    document.querySelectorAll(".start-chat-btn").forEach(button => {
-        button.addEventListener("click", (event) => {
-            event.preventDefault();
-            const targetUserId = button.getAttribute("data-user-id");
-            const currentUserId = {{ current_user_id | tojson }};  // Передаем current_user_id в JavaScript
-
-            if (!targetUserId) {
-                console.error("Целевой пользователь не указан.");
-                return;
-            }
-
-            startChat(currentUserId, targetUserId);  // Вызов функции для начала чата
-        });
-    });
 </script>
 {% endblock %}
