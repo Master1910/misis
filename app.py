@@ -146,6 +146,7 @@ def find_users_with_common_interests(user_id):
         # Получение интересов текущего пользователя
         cursor.execute("SELECT interests FROM users WHERE id = %s;", (user_id,))
         user_interests_row = cursor.fetchone()
+
         if not user_interests_row or not user_interests_row['interests']:
             print(f"Интересы текущего пользователя (ID: {user_id}) не найдены или пусты.")
             cursor.close()
@@ -153,13 +154,16 @@ def find_users_with_common_interests(user_id):
             return []
 
         user_interests = set(user_interests_row['interests'].split(','))
-        print(f"Интересы текущего пользователя: {user_interests}")
+        print(f"Интересы текущего пользователя (ID: {user_id}): {user_interests}")
 
         # Поиск других пользователей с совпадающими интересами
         cursor.execute("SELECT id, username, interests FROM users WHERE id != %s;", (user_id,))
         all_users = cursor.fetchall()
-        matches = []
 
+        # Проверка данных
+        print(f"Найдено пользователей для сравнения: {len(all_users)}")
+
+        matches = []
         for other_user in all_users:
             if not other_user['interests']:
                 continue
@@ -168,7 +172,7 @@ def find_users_with_common_interests(user_id):
             if common_interests:
                 matches.append({
                     'id': other_user['id'],
-                    'name': other_user['username'],  # Меняем ключ username на name
+                    'name': other_user['username'],
                     'common_interests': ', '.join(common_interests)
                 })
 
@@ -180,6 +184,7 @@ def find_users_with_common_interests(user_id):
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return []
+
 
 
 
