@@ -257,7 +257,7 @@ def find_matches():
         print(f"Найдено совпадений: {len(matches)}")
         
         return render_template('find_matches.html', matches=matches, current_user_id=user_id)
-
+    
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка поиска совпадений.", 500
@@ -316,6 +316,38 @@ def on_leave(data):
         emit('message', {'msg': f'{username} left the chat'}, room=room)
         leave_room(room)
 
+@app.route('/start_chat', methods=['POST'])
+def start_chat():
+    """Создание чата между двумя пользователями."""
+    data = request.get_json()
+    user_1_id = data.get('user_1_id')
+    user_2_id = data.get('user_2_id')
+
+    if not user_1_id or not user_2_id:
+        return jsonify({'error': 'Некорректные данные пользователей'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''INSERT INTO chats (user_1_id, user_2_id, active) 
+                          VALUES (%s, %s, 1)''', (user_1_id, user_2_id))
+        conn.commit()
+
+        cursor.execute('SELECT LAST_INSERT_ID();')
+        chat_id = cursor.fetchone()[0]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'chat_id': chat_id})
+
+    except Exception as e:
+        print(f"Ошибка создания чата: {e}")
+        return jsonify({'error': 'Не удалось создать чат. Попробуйте позже.'}), 500
+
+
+
 @app.route('/start_chat/<int:match_id>')
 def start_match_chat(match_id):
     """Начать чат с пользователем с совпадениями."""
@@ -341,38 +373,6 @@ def start_match_chat(match_id):
     except Exception as e:
         print(f"Ошибка базы данных: {e}")
         return "Ошибка при создании чата.", 500
-
-
-@app.route("/chat/<int:chat_id>")
-def chat(chat_id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT * FROM chats WHERE chat_id = %s", (chat_id,))
-    chat = cursor.fetchone()
-    
-    if not chat:
-        abort(404)
-    
-    cursor.execute("SELECT * FROM messages WHERE chat_id = %s", (chat_id,))
-    messages = cursor.fetchall()
-    
-    # Получение данных о пользователях
-    cursor.execute("SELECT username FROM users WHERE id = %s", (chat['user_1_id'],))
-    user_1 = cursor.fetchone()
-    
-    cursor.execute("SELECT username FROM users WHERE id = %s", (chat['user_2_id'],))
-    user_2 = cursor.fetchone()
-
-    target_user = user_1['username'] if current_user.id != user_1['id'] else user_2['username']
-    
-    conn.close()
-    
-    return render_template("chat.html", 
-                           chat_id=chat_id, 
-                           messages=messages, 
-                           target_user=target_user,
-                           current_user_id=current_user.id)
 
 
 
