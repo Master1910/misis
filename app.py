@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from flask_session import Session
 from flask_socketio import SocketIO, join_room, emit
 from werkzeug.security import generate_password_hash, check_password_hash
-import MySQLdb
+import mysql.connector
 import os
 import redis
 
@@ -28,7 +28,7 @@ import MySQLdb
 
 def get_db_connection():
     try:
-        conn = MySQLdb.connect(
+        conn = mysql.connector.connect(
             host="81.200.146.168",
             user="gen_user",
             passwd="MasterElitVac",  # Замените на реальный пароль
