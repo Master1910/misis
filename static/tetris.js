@@ -20,6 +20,7 @@ const shapes = {
     T: [[[0, 1, 0], [1, 1, 1]]],
     Z: [[[1, 1, 0], [0, 1, 1]]],
 };
+
 // Создание сетки
 function createGrid() {
     return Array.from({ length: ROWS }, () => Array(COLUMNS).fill(0));
@@ -170,6 +171,20 @@ function dropInstantly() {
     draw();
 }
 
+// Добавление мобильных кнопок
+function createMobileControls() {
+    const controls = document.createElement('div');
+    controls.classList.add('controls');
+    controls.innerHTML = `
+        <button onclick="movePiece(-1)">←</button>
+        <button onclick="rotatePiece()">⟳</button>
+        <button onclick="movePiece(1)">→</button>
+        <button onclick="dropPiece()">↓</button>
+        <button onclick="dropInstantly()">⤓</button>
+    `;
+    document.body.appendChild(controls);
+}
+
 function rotatePiece() {
     const prev = currentPiece.map(row => [...row]);
     currentPiece = currentPiece[0].map((_, i) =>
@@ -190,5 +205,6 @@ function startGame() {
     gameInterval = setInterval(dropPiece, 1000);
 }
 
-// Запуск игры
+// Запуск
 startGame();
+createMobileControls();
