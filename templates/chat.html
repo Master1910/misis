@@ -47,7 +47,11 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
+    // Подключаемся к WebSocket
     const socket = io.connect();
+
+    // Когда пользователь подключается к чату
+    socket.emit("join_chat", { chat_id: chatId });
 
     // Обработчик отправки сообщений
     chatForm.addEventListener("submit", (event) => {
@@ -62,12 +66,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 message: messageText,
             });
 
-            addMessageToChat("Вы", messageText, true);
-            messageInput.value = "";
+            addMessageToChat("Вы", messageText, true);  // Добавляем отправленное сообщение в чат
+            messageInput.value = "";  // Очищаем поле ввода
         }
     });
 
-    // Обработка входящих сообщений
+    // Обработка входящих сообщений от других пользователей
     socket.on("receive_message", (data) => {
         if (data && data.message) {
             const senderName = data.sender_id === currentUserId ? "Вы" : data.sender;
@@ -75,7 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Добавление сообщений в чат
+    // Добавление сообщения в чат
     function addMessageToChat(sender, text, isUser) {
         const messageClass = isUser ? "message sent" : "message received";
         const newMessage = `
@@ -94,9 +98,6 @@ document.addEventListener("DOMContentLoaded", () => {
             behavior: "smooth",
         });
     }
-
-    // Подключение к чату
-    socket.emit("join_chat", { chat_id: chatId });
 });
 </script>
 
