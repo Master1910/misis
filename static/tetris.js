@@ -8,82 +8,36 @@ const BLOCK_SIZE = 30;
 
 canvas.width = COLUMNS * BLOCK_SIZE;
 canvas.height = ROWS * BLOCK_SIZE;
-
 context.scale(BLOCK_SIZE, BLOCK_SIZE);
 
 // Формы фигур
 const shapes = {
-    I: [
-        [[1, 1, 1, 1]]
-    ],
-    J: [
-        [[1, 0, 0], [1, 1, 1]]
-    ],
-    L: [
-        [[0, 0, 1], [1, 1, 1]]
-    ],
-    O: [
-        [[1, 1], [1, 1]]
-    ],
-    S: [
-        [[0, 1, 1], [1, 1, 0]]
-    ],
-    T: [
-        [[0, 1, 0], [1, 1, 1]]
-    ],
-    Z: [
-        [[1, 1, 0], [0, 1, 1]]
-    ]
+    I: [[[1, 1, 1, 1]]],
+    J: [[[1, 0, 0], [1, 1, 1]]],
+    L: [[[0, 0, 1], [1, 1, 1]]],
+    O: [[[1, 1], [1, 1]]],
+    S: [[[0, 1, 1], [1, 1, 0]]],
+    T: [[[0, 1, 0], [1, 1, 1]]],
+    Z: [[[1, 1, 0], [0, 1, 1]]],
 };
 
 // Создание сетки
-function createGrid(width, height) {
-    const grid = [];
-    while (height--) {
-        grid.push(new Array(width).fill(0));
-    }
-    return grid;
+function createGrid() {
+    return Array.from({ length: ROWS }, () => Array(COLUMNS).fill(0));
 }
 
-// Проверка заполненных линий
-function checkLines() {
-    for (let y = grid.length - 1; y >= 0; y--) {
-        if (grid[y].every(cell => cell !== 0)) {
-            grid.splice(y, 1);
-            grid.unshift(new Array(COLUMNS).fill(0));
-            score += 10;
-            updateScore();
-        }
-    }
-}
-
-// Обновление очков
+// Переменные
+let grid = createGrid();
 let score = 0;
-function updateScore() {
-    document.querySelector('.score').innerText = `Очки: ${score}`;
-}
-
-// Управление фигурой
 let currentPiece = createPiece();
 let position = { x: 4, y: 0 };
+let gameInterval;
 
-// Функция создания случайной фигуры
+// Случайная фигура
 function createPiece() {
     const pieces = 'IJLOSTZ';
     const type = pieces[Math.floor(Math.random() * pieces.length)];
-    return shapes[type];
-}
-
-// Отрисовка фигуры
-function drawPiece(piece, offset) {
-    piece.forEach((row, y) => {
-        row.forEach((value, x) => {
-            if (value !== 0) {
-                context.fillStyle = 'red';
-                context.fillRect(x + offset.x, y + offset.y, 1, 1);
-            }
-        });
-    });
+    return shapes[type][0];
 }
 
 // Отрисовка сетки
@@ -96,47 +50,45 @@ function drawGrid() {
     }
 }
 
-// Отрисовка зафиксированных фигур
+// Отрисовка зафиксированных блоков
 function drawGridContent() {
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLUMNS; x++) {
             if (grid[y][x] !== 0) {
-                context.fillStyle = 'blue';  // Цвет зафиксированных фигур
+                context.fillStyle = 'blue';
                 context.fillRect(x, y, 1, 1);
             }
         }
     }
 }
 
-// Обновленная функция отрисовки
+// Отрисовка текущей фигуры
+function drawPiece(piece, offset) {
+    piece.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value !== 0) {
+                context.fillStyle = 'red';
+                context.fillRect(x + offset.x, y + offset.y, 1, 1);
+            }
+        });
+    });
+}
+
+// Основная функция отрисовки
 function draw() {
     context.clearRect(0, 0, canvas.width, canvas.height);
-    drawGridContent();  // Зафиксированные фигуры
-    drawPiece(currentPiece, position);  // Текущая фигура
-    drawGrid();  // Сетка
+    drawGridContent();
+    drawPiece(currentPiece, position);
+    drawGrid();
 }
 
-
-// Перемещение фигуры вниз
-function dropPiece() {
-    position.y++;
-    if (collision()) {
-        position.y--;
-        merge();
-        checkLines();
-        resetPiece();
-    }
-    draw();
-}
-
-// Проверка столкновений
+// Проверка столкновения
 function collision() {
     for (let y = 0; y < currentPiece.length; y++) {
         for (let x = 0; x < currentPiece[y].length; x++) {
             if (
                 currentPiece[y][x] !== 0 &&
-                (grid[position.y + y] &&
-                grid[position.y + y][position.x + x]) !== 0
+                (grid[position.y + y] && grid[position.y + y][position.x + x]) !== 0
             ) {
                 return true;
             }
@@ -156,40 +108,47 @@ function merge() {
     });
 }
 
+// Проверка и удаление заполненных линий
+function checkLines() {
+    for (let y = grid.length - 1; y >= 0; y--) {
+        if (grid[y].every(cell => cell !== 0)) {
+            grid.splice(y, 1);
+            grid.unshift(new Array(COLUMNS).fill(0));
+            score += 10;
+            updateScore();
+        }
+    }
+}
+
+// Обновление очков
+function updateScore() {
+    document.querySelector('.score').innerText = `Очки: ${score}`;
+}
+
 // Сброс фигуры
 function resetPiece() {
     currentPiece = createPiece();
     position = { x: 4, y: 0 };
     if (collision()) {
-        grid = createGrid(COLUMNS, ROWS);
+        grid = createGrid();
         score = 0;
         updateScore();
     }
 }
 
-// Основная функция отрисовки
-function draw() {
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    drawPiece(currentPiece, position);
+// Падение фигуры
+function dropPiece() {
+    position.y++;
+    if (collision()) {
+        position.y--;
+        merge();
+        checkLines();
+        resetPiece();
+    }
+    draw();
 }
 
-// Запуск игры
-let grid = createGrid(COLUMNS, ROWS);
-updateScore();
-let gameInterval;
-
-// Функция старта игры
-function startGame() {
-    score = 0;
-    grid = createGrid(COLUMNS, ROWS);
-    updateScore();
-    currentPiece = createPiece();
-    position = { x: 4, y: 0 };
-    if (gameInterval) clearInterval(gameInterval);
-    gameInterval = setInterval(dropPiece, 1000);
-}
-
-// Управление с клавиатуры
+// Управление
 document.addEventListener('keydown', event => {
     if (event.key === 'ArrowLeft') movePiece(-1);
     if (event.key === 'ArrowRight') movePiece(1);
@@ -197,14 +156,12 @@ document.addEventListener('keydown', event => {
     if (event.key === ' ') dropInstantly();
 });
 
-// Перемещение фигуры
 function movePiece(direction) {
     position.x += direction;
     if (collision()) position.x -= direction;
     draw();
 }
 
-// Мгновенное падение
 function dropInstantly() {
     while (!collision()) position.y++;
     position.y--;
@@ -214,28 +171,25 @@ function dropInstantly() {
     draw();
 }
 
-// Создание элементов управления для телефона
-function createMobileControls() {
-    const controls = document.createElement('div');
-    controls.classList.add('mobile-controls');
-    controls.innerHTML = `
-        <button onclick="movePiece(-1)">←</button>
-        <button onclick="rotatePiece()">⟳</button>
-        <button onclick="movePiece(1)">→</button>
-        <button onclick="dropPiece()">↓</button>
-    `;
-    document.body.appendChild(controls);
-}
-
-// Вращение фигуры
 function rotatePiece() {
-    const prevPiece = currentPiece.map(row => [...row]);
+    const prev = currentPiece.map(row => [...row]);
     currentPiece = currentPiece[0].map((_, i) =>
         currentPiece.map(row => row[i]).reverse()
     );
-    if (collision()) currentPiece = prevPiece;
+    if (collision()) currentPiece = prev;
     draw();
 }
 
-// Запуск мобильных кнопок
-createMobileControls();
+// Старт игры
+function startGame() {
+    score = 0;
+    grid = createGrid();
+    updateScore();
+    currentPiece = createPiece();
+    position = { x: 4, y: 0 };
+    if (gameInterval) clearInterval(gameInterval);
+    gameInterval = setInterval(dropPiece, 1000);
+}
+
+// Запуск игры
+startGame();
