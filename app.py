@@ -343,6 +343,38 @@ def start_match_chat(match_id):
         return "Ошибка при создании чата.", 500
 
 
+@app.route("/chat/<int:chat_id>")
+def chat(chat_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM chats WHERE chat_id = %s", (chat_id,))
+    chat = cursor.fetchone()
+    
+    if not chat:
+        abort(404)
+    
+    cursor.execute("SELECT * FROM messages WHERE chat_id = %s", (chat_id,))
+    messages = cursor.fetchall()
+    
+    # Получение данных о пользователях
+    cursor.execute("SELECT username FROM users WHERE id = %s", (chat['user_1_id'],))
+    user_1 = cursor.fetchone()
+    
+    cursor.execute("SELECT username FROM users WHERE id = %s", (chat['user_2_id'],))
+    user_2 = cursor.fetchone()
+
+    target_user = user_1['username'] if current_user.id != user_1['id'] else user_2['username']
+    
+    conn.close()
+    
+    return render_template("chat.html", 
+                           chat_id=chat_id, 
+                           messages=messages, 
+                           target_user=target_user,
+                           current_user_id=current_user.id)
+
+
 
 # --- Запуск ---
 if __name__ == '__main__':
