@@ -120,7 +120,18 @@ function draw() {
 // Запуск игры
 let grid = createGrid(COLUMNS, ROWS);
 updateScore();
-setInterval(dropPiece, 1000);
+let gameInterval;
+
+// Функция старта игры
+function startGame() {
+    score = 0;
+    grid = createGrid(COLUMNS, ROWS);
+    updateScore();
+    currentPiece = createPiece();
+    position = { x: 4, y: 0 };
+    if (gameInterval) clearInterval(gameInterval);
+    gameInterval = setInterval(dropPiece, 1000);
+}
 
 // Управление с клавиатуры
 document.addEventListener('keydown', event => {
@@ -172,4 +183,3 @@ function rotatePiece() {
 
 // Запуск мобильных кнопок
 createMobileControls();
-
