@@ -1,1 +1,8 @@
+{% extends "base.html" %}
 
+{% block content %}
+<h1>Игра Тетрис</h1>
+<canvas id="tetris" width="300" height="600"></canvas>
+<script src="{{ url_for('static', filename='tetris.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='tetris.css') }}">
+{% endblock %}
