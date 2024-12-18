@@ -276,6 +276,44 @@ def internal_server_error(e):
 def tetris():
     return render_template('tetris.html')
 
+
+#все что связано с чатами
+@socketio.on('join')
+def on_join(data):
+    username = session.get('username')
+    if username:
+        room = data['room']
+        join_room(room)
+        emit('message', {'msg': f'{username} joined the chat'}, room=room)
+
+@socketio.on('send_message')
+def handle_message(data):
+    room = data['room']
+    message = data['message']
+    username = session.get('username')
+    
+    # Сохранить сообщение в базе данных
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''INSERT INTO messages (chat_id, sender_id, message)
+                      VALUES (%s, %s, %s)''', (room, username, message))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    # Отправить сообщение всем участникам чата
+    emit('message', {'msg': f'{username}: {message}'}, room=room)
+
+@socketio.on('leave')
+def on_leave(data):
+    username = session.get('username')
+    if username:
+        room = data['room']
+        emit('message', {'msg': f'{username} left the chat'}, room=room)
+        leave_room(room)
+
+
+
 # --- Запуск ---
 if __name__ == '__main__':
     init_db()
