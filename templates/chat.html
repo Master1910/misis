@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const messageInput = document.getElementById("message-input");
 
     const chatId = chatHistory.dataset.chatId;
-    const currentUserId = {{ current_user_id | safe }};
+    const currentUserId = {{ current_user_id | tojson }};  // Передаем current_user_id из шаблона
     const targetUser = "{{ target_user }}";
 
     if (!chatId || !chatHistory || !chatForm || !messageInput) {
@@ -75,14 +75,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Обработка системных сообщений
-    socket.on("system_message", (data) => {
-        addMessageToChat("Система", data.msg, false, true);
-    });
-
-    // Добавление сообщений в историю чата
-    function addMessageToChat(sender, text, isUser, isSystem = false) {
-        const messageClass = isSystem ? "system-message" : isUser ? "message sent" : "message received";
+    // Добавление сообщений в чат
+    function addMessageToChat(sender, text, isUser) {
+        const messageClass = isUser ? "message sent" : "message received";
         const newMessage = `
             <div class="${messageClass}">
                 <p><strong>${sender}:</strong> ${text}</p>
