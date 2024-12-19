@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask_session import Session
+from app import socketio, app
 from flask_socketio import SocketIO, join_room, emit
 from werkzeug.security import generate_password_hash, check_password_hash
 import mysql.connector
@@ -272,4 +273,5 @@ def internal_server_error(e):
 
 # --- Запуск ---
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
+    port = int(os.getenv("PORT", 5000))
+    socketio.run(app, host='0.0.0.0', port=port)
